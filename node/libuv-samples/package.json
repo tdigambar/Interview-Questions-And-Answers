@@ -1,0 +1,31 @@
+{
+  "name": "libuv-samples",
+  "version": "1.0.0",
+  "description": "Libuv sample implementation and examples for understanding Node.js internals",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "basic-event-loop": "node examples/basic-event-loop.js",
+    "async-io": "node examples/async-io-demo.js",
+    "event-loop-phases": "node examples/event-loop-phases.js",
+    "thread-pool": "node examples/thread-pool-demo.js",
+    "performance": "node examples/performance-monitoring.js",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [
+    "libuv",
+    "nodejs",
+    "event-loop",
+    "async",
+    "interview",
+    "examples"
+  ],
+  "author": "Interview Questions and Answers",
+  "license": "MIT",
+  "dependencies": {
+    "fs-extra": "^10.1.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

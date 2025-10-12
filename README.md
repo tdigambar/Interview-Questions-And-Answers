@@ -52,7 +52,9 @@ The `typescript/` directory contains comprehensive interview questions and answe
 - **Type System**: Basic and advanced types, type inference, type guards
 - **Generics**: Generic functions, classes, constraints, and utility types
 - **Advanced Types**: Mapped types, conditional types, template literal types
+- **Utility Types**: Partial, Required, Readonly, Pick, Omit, Record, and more
 - **OOP in TypeScript**: Classes, interfaces, inheritance, access modifiers
+- **Async Operations**: Promises, async/await, error handling, state management
 - **Real-World Patterns**: Repository pattern, factory pattern, dependency injection
 - **Best Practices**: Error handling, type-safe APIs, and production patterns
 
@@ -72,6 +74,8 @@ The `typescript/` directory contains comprehensive interview questions and answe
 - **Classes & OOP**: Inheritance, access modifiers, abstract classes, patterns
 - **Advanced Types**: Mapped types, conditional types, utility types
 - **Decorators**: Class, method, property, and parameter decorators
+- **Utility Types**: All built-in TypeScript utility types with examples
+- **Async Operations**: Comprehensive async/await patterns and error handling
 - **Real-World Patterns**: Design patterns and best practices
 
 ### Key Concepts
@@ -103,10 +107,11 @@ Interview-Questions-And-Answers/
 │   │   ├── 06-advanced-types.ts
 │   │   ├── 07-decorators.ts
 │   │   ├── 08-real-world-patterns.ts
-│   │   └── 09-utility-types.ts
+│   │   ├── 09-utility-types.ts
+│   │   └── 10-async-operations.ts
 │   ├── package.json           # Dependencies and scripts
 │   ├── tsconfig.json          # TypeScript configuration
-│   └── README.md             # Comprehensive Q&A guide (31 questions)
+│   └── README.md             # Comprehensive Q&A guide (32 questions)
 └── README.md                  # This file
 ```
 

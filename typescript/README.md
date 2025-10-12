@@ -1320,7 +1320,203 @@ async function fetchData(url: string): Promise<Result<any>> {
 
 ## Practical Scenarios
 
-### 29. How do you type a function that accepts variable arguments?
+### 29. How do you handle asynchronous operations with TypeScript?
+
+**Answer:**
+TypeScript provides excellent support for async operations with proper type safety.
+
+**1. Basic Promises with Type Annotations:**
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+function fetchUser(id: number): Promise<User> {
+  return fetch(`/api/users/${id}`)
+    .then(response => response.json())
+    .then(data => data as User);
+}
+
+// Using the promise
+fetchUser(1)
+  .then((user: User) => console.log(user.name))
+  .catch((error: Error) => console.error(error.message));
+```
+
+**2. Async/Await (Recommended):**
+
+```typescript
+async function getUser(id: number): Promise<User> {
+  const response = await fetch(`/api/users/${id}`);
+  const user: User = await response.json();
+  return user;
+}
+
+async function displayUser() {
+  try {
+    const user = await getUser(1);
+    console.log(user.name); // TypeScript knows user is User
+  } catch (error) {
+    console.error('Failed to fetch user:', error);
+  }
+}
+```
+
+**3. Generic Async Functions:**
+
+```typescript
+async function fetchData<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return await response.json() as T;
+}
+
+// Usage with type inference
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+}
+
+const product = await fetchData<Product>('/api/products/1');
+const products = await fetchData<Product[]>('/api/products');
+```
+
+**4. Result Type Pattern (Type-Safe Error Handling):**
+
+```typescript
+type Result<T, E = Error> =
+  | { success: true; data: T }
+  | { success: false; error: E };
+
+async function safeFetchUser(id: number): Promise<Result<User>> {
+  try {
+    const response = await fetch(`/api/users/${id}`);
+    
+    if (!response.ok) {
+      return {
+        success: false,
+        error: new Error(`HTTP ${response.status}`)
+      };
+    }
+
+    const user = await response.json();
+    return { success: true, data: user };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error : new Error('Unknown error')
+    };
+  }
+}
+
+// Usage - forces error checking
+async function displayUserSafely(id: number) {
+  const result = await safeFetchUser(id);
+  
+  if (result.success) {
+    console.log(result.data.name); // TypeScript knows data exists
+  } else {
+    console.error(result.error.message); // TypeScript knows error exists
+  }
+}
+```
+
+**5. Promise.all with TypeScript:**
+
+```typescript
+async function fetchUserAndPosts(userId: number) {
+  const [user, posts] = await Promise.all([
+    fetchData<User>(`/api/users/${userId}`),
+    fetchData<Post[]>(`/api/posts?userId=${userId}`)
+  ]);
+
+  // TypeScript infers: user is User, posts is Post[]
+  return { user, posts };
+}
+```
+
+**6. Error Handling with Type Guards:**
+
+```typescript
+class NetworkError extends Error {
+  constructor(message: string, public statusCode: number) {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}
+
+function isNetworkError(error: unknown): error is NetworkError {
+  return error instanceof NetworkError;
+}
+
+async function saveUser(user: User): Promise<void> {
+  try {
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(user),
+    });
+
+    if (!response.ok) {
+      throw new NetworkError('Failed to save user', response.status);
+    }
+  } catch (error) {
+    if (isNetworkError(error)) {
+      console.error(`Network error (${error.statusCode}): ${error.message}`);
+    } else {
+      console.error('Unknown error:', error);
+    }
+    throw error;
+  }
+}
+```
+
+**7. Async State Management:**
+
+```typescript
+type AsyncState<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: T }
+  | { status: 'error'; error: Error };
+
+class AsyncDataManager<T> {
+  private state: AsyncState<T> = { status: 'idle' };
+
+  async execute(fn: () => Promise<T>): Promise<void> {
+    this.state = { status: 'loading' };
+
+    try {
+      const data = await fn();
+      this.state = { status: 'success', data };
+    } catch (error) {
+      this.state = {
+        status: 'error',
+        error: error instanceof Error ? error : new Error('Unknown error')
+      };
+    }
+  }
+
+  getState(): AsyncState<T> {
+    return this.state;
+  }
+}
+```
+
+**Best Practices:**
+- Always specify return types for async functions
+- Use `async/await` instead of raw promises for readability
+- Handle errors explicitly with try/catch or Result types
+- Use type guards for specific error handling
+- Avoid `any` - use `unknown` for caught errors
+- Use generics for reusable async functions
+
+### 30. How do you type a function that accepts variable arguments?
 
 **Answer:**
 
@@ -1361,7 +1557,7 @@ function format(template: string, ...values: (string | number)[]): string {
 format("Hello {0}, you are {1} years old", "Alice", 30);
 ```
 
-### 30. How do you type React components in TypeScript?
+### 31. How do you type React components in TypeScript?
 
 **Answer:**
 
@@ -1462,7 +1658,7 @@ const Form: React.FC = () => {
 };
 ```
 
-### 31. How do you create a type-safe API client?
+### 32. How do you create a type-safe API client?
 
 **Answer:**
 

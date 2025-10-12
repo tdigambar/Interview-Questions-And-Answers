@@ -62,6 +62,11 @@ console.log("     - Partial, Required, Readonly, Pick, Omit");
 console.log("     - Record, Exclude, Extract, ReturnType, etc.");
 console.log();
 
+console.log("  10. Async Operations (npm run async)");
+console.log("     - Promises, async/await, error handling");
+console.log("     - Result types, retry logic, state management");
+console.log();
+
 console.log("=".repeat(60));
 console.log();
 console.log("💡 Quick Start:");

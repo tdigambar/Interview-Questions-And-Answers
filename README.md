@@ -41,6 +41,48 @@ Libuv is a multi-platform C library that provides support for asynchronous I/O o
 - Non-blocking I/O
 - Performance Monitoring
 
+## TypeScript Topics
+
+### TypeScript Interview Questions
+
+The `typescript/` directory contains comprehensive interview questions and answers covering TypeScript fundamentals to advanced concepts. This is an essential resource for developers preparing for TypeScript interviews or looking to deepen their understanding of the language.
+
+### What You'll Learn
+
+- **Type System**: Basic and advanced types, type inference, type guards
+- **Generics**: Generic functions, classes, constraints, and utility types
+- **Advanced Types**: Mapped types, conditional types, template literal types
+- **OOP in TypeScript**: Classes, interfaces, inheritance, access modifiers
+- **Real-World Patterns**: Repository pattern, factory pattern, dependency injection
+- **Best Practices**: Error handling, type-safe APIs, and production patterns
+
+### Getting Started
+
+1. Navigate to the `typescript/` directory
+2. Read through the `README.md` for interview questions and answers
+3. Install dependencies: `npm install`
+4. Run examples to see concepts in action
+
+### Examples Available
+
+- **Basic Types**: Primitive types, arrays, tuples, enums, type inference
+- **Functions**: Function types, overloads, generics, async functions
+- **Interfaces & Types**: Differences, when to use each, declaration merging
+- **Generics**: Generic functions, classes, constraints, real-world examples
+- **Classes & OOP**: Inheritance, access modifiers, abstract classes, patterns
+- **Advanced Types**: Mapped types, conditional types, utility types
+- **Decorators**: Class, method, property, and parameter decorators
+- **Real-World Patterns**: Design patterns and best practices
+
+### Key Concepts
+
+- Type Safety and Type Checking
+- Generic Programming
+- Object-Oriented Programming
+- Advanced Type Manipulation
+- Design Patterns in TypeScript
+- Error Handling Strategies
+
 ## Repository Structure
 
 ```
@@ -51,9 +93,22 @@ Interview-Questions-And-Answers/
 │       ├── package.json        # Dependencies and scripts
 │       ├── README.md          # Detailed documentation
 │       └── index.js           # Main entry point
+├── typescript/                 # TypeScript interview questions and examples
+│   ├── examples/              # Practical TypeScript code examples
+│   │   ├── 01-basic-types.ts
+│   │   ├── 02-functions.ts
+│   │   ├── 03-interfaces-types.ts
+│   │   ├── 04-generics.ts
+│   │   ├── 05-classes-oop.ts
+│   │   ├── 06-advanced-types.ts
+│   │   ├── 07-decorators.ts
+│   │   └── 08-real-world-patterns.ts
+│   ├── package.json           # Dependencies and scripts
+│   ├── tsconfig.json          # TypeScript configuration
+│   └── README.md             # Comprehensive Q&A guide
 └── README.md                  # This file
 ```
 
 ## Other Topics
 
-This repository will be expanded with more interview questions and technical examples covering various programming concepts, algorithms, and system design topics. The `node/` directory will contain Node.js-specific topics, while other directories will be added for different technologies and concepts.
+This repository will be expanded with more interview questions and technical examples covering various programming concepts, algorithms, and system design topics.

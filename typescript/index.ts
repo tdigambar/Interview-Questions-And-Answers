@@ -57,6 +57,11 @@ console.log("     - Repository, Service, Factory patterns");
 console.log("     - Type-safe API clients and error handling");
 console.log();
 
+console.log("  9. Utility Types (npm run utility-types)");
+console.log("     - Partial, Required, Readonly, Pick, Omit");
+console.log("     - Record, Exclude, Extract, ReturnType, etc.");
+console.log();
+
 console.log("=".repeat(60));
 console.log();
 console.log("💡 Quick Start:");

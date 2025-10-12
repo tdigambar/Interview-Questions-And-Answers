@@ -15,6 +15,7 @@
     "advanced": "ts-node examples/06-advanced-types.ts",
     "decorators": "ts-node examples/07-decorators.ts",
     "patterns": "ts-node examples/08-real-world-patterns.ts",
+    "utility-types": "ts-node examples/09-utility-types.ts",
     "lint": "eslint . --ext .ts",
     "type-check": "tsc --noEmit"
   },

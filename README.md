@@ -102,10 +102,11 @@ Interview-Questions-And-Answers/
 │   │   ├── 05-classes-oop.ts
 │   │   ├── 06-advanced-types.ts
 │   │   ├── 07-decorators.ts
-│   │   └── 08-real-world-patterns.ts
+│   │   ├── 08-real-world-patterns.ts
+│   │   └── 09-utility-types.ts
 │   ├── package.json           # Dependencies and scripts
 │   ├── tsconfig.json          # TypeScript configuration
-│   └── README.md             # Comprehensive Q&A guide
+│   └── README.md             # Comprehensive Q&A guide (31 questions)
 └── README.md                  # This file
 ```
 

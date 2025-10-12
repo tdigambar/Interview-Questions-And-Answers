@@ -7,13 +7,14 @@ A comprehensive guide to TypeScript interview questions with detailed answers an
 1. [Basics](#basics)
 2. [Type System](#type-system)
 3. [Advanced Types](#advanced-types)
-4. [Generics](#generics)
-5. [Classes and OOP](#classes-and-oop)
-6. [Interfaces vs Types](#interfaces-vs-types)
-7. [Modules and Namespaces](#modules-and-namespaces)
-8. [Configuration](#configuration)
-9. [Best Practices](#best-practices)
-10. [Practical Scenarios](#practical-scenarios)
+4. [Utility Types](#utility-types)
+5. [Generics](#generics)
+6. [Classes and OOP](#classes-and-oop)
+7. [Interfaces vs Types](#interfaces-vs-types)
+8. [Modules and Namespaces](#modules-and-namespaces)
+9. [Configuration](#configuration)
+10. [Best Practices](#best-practices)
+11. [Practical Scenarios](#practical-scenarios)
 
 ---
 
@@ -390,11 +391,141 @@ const age = getProperty(person, "age"); // Type: number
 // getProperty(person, "invalid"); // Error
 ```
 
+### 13. What are TypeScript utility types?
+
+**Answer:**
+Utility types are built-in generic types that help transform and manipulate existing types. They're included in TypeScript's standard library and don't require imports.
+
+**Common Utility Types:**
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  age: number;
+}
+
+// 1. Partial<T> - Makes all properties optional
+type PartialUser = Partial<User>;
+// { id?: number; name?: string; email?: string; age?: number; }
+
+function updateUser(id: number, updates: Partial<User>) {
+  // Can pass only the fields you want to update
+}
+
+// 2. Required<T> - Makes all properties required
+interface Config {
+  host?: string;
+  port?: number;
+}
+type RequiredConfig = Required<Config>;
+// { host: string; port: number; }
+
+// 3. Readonly<T> - Makes all properties readonly
+type ReadonlyUser = Readonly<User>;
+const user: ReadonlyUser = { id: 1, name: "Alice", email: "alice@example.com", age: 30 };
+// user.age = 31; // Error: Cannot assign to 'age' because it is a read-only property
+
+// 4. Pick<T, K> - Pick specific properties
+type UserPreview = Pick<User, "id" | "name" | "email">;
+// { id: number; name: string; email: string; }
+
+// 5. Omit<T, K> - Omit specific properties
+type UserWithoutPassword = Omit<User, "password">;
+type UserCreate = Omit<User, "id">; // For creating new users
+
+// 6. Record<K, T> - Create object type with keys K and values T
+type UserRole = "admin" | "user" | "guest";
+const permissions: Record<UserRole, string[]> = {
+  admin: ["read", "write", "delete"],
+  user: ["read", "write"],
+  guest: ["read"]
+};
+
+// 7. Exclude<T, U> - Remove types from union
+type Status = "pending" | "approved" | "rejected" | "cancelled";
+type ActiveStatus = Exclude<Status, "cancelled" | "rejected">;
+// "pending" | "approved"
+
+// 8. Extract<T, U> - Extract types from union
+type CompletedStatus = Extract<Status, "approved" | "rejected">;
+// "approved" | "rejected"
+
+// 9. NonNullable<T> - Remove null and undefined
+type MaybeString = string | null | undefined;
+type DefinitelyString = NonNullable<MaybeString>; // string
+
+// 10. ReturnType<T> - Extract function return type
+function getUser() {
+  return { id: 1, name: "Alice", email: "alice@example.com" };
+}
+type UserType = ReturnType<typeof getUser>;
+// { id: number; name: string; email: string; }
+
+// 11. Parameters<T> - Extract function parameter types
+function createUser(name: string, age: number, email: string) {
+  return { name, age, email };
+}
+type CreateUserParams = Parameters<typeof createUser>;
+// [name: string, age: number, email: string]
+
+// 12. Awaited<T> - Unwrap Promise type
+type AsyncUser = Promise<User>;
+type SyncUser = Awaited<AsyncUser>; // User
+
+// 13. String Manipulation Types
+type Greeting = "hello world";
+type Upper = Uppercase<Greeting>; // "HELLO WORLD"
+type Lower = Lowercase<Greeting>; // "hello world"
+type Capitalized = Capitalize<Greeting>; // "Hello world"
+type Uncapitalized = Uncapitalize<"Hello">; // "hello"
+```
+
+**Real-World Example:**
+
+```typescript
+interface Article {
+  id: number;
+  title: string;
+  content: string;
+  author: string;
+  createdAt: Date;
+  updatedAt: Date;
+  published: boolean;
+}
+
+// For API requests
+type ArticleCreate = Omit<Article, "id" | "createdAt" | "updatedAt" | "published">;
+type ArticleUpdate = Partial<Omit<Article, "id">> & Pick<Article, "id">;
+
+// For responses
+type ArticleResponse = Readonly<Article>;
+type ArticleListItem = Pick<Article, "id" | "title" | "author" | "published">;
+
+// Usage
+function createArticle(data: ArticleCreate): Article {
+  return {
+    ...data,
+    id: Date.now(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    published: false
+  };
+}
+```
+
+---
+
+## Utility Types
+
+*(See Question 13 above for comprehensive utility types coverage)*
+
 ---
 
 ## Generics
 
-### 13. What are generics and why use them?
+### 14. What are generics and why use them?
 
 **Answer:**
 Generics allow you to create reusable components that work with multiple types while maintaining type safety.
@@ -427,7 +558,7 @@ const first = firstElement([1, 2, 3]); // Type: number | undefined
 const firstStr = firstElement(["a", "b"]); // Type: string | undefined
 ```
 
-### 14. How do you constrain generics?
+### 15. How do you constrain generics?
 
 **Answer:**
 Generic constraints limit the types that can be used with generics using the `extends` keyword.
@@ -467,7 +598,7 @@ function displayEntity<T extends HasId & HasName>(entity: T): string {
 }
 ```
 
-### 15. What are generic classes?
+### 16. What are generic classes?
 
 **Answer:**
 Generic classes have a generic type parameter list in angle brackets following the class name.
@@ -520,7 +651,7 @@ console.log(numberStack.pop()); // 2
 
 ## Classes and OOP
 
-### 16. Explain access modifiers in TypeScript
+### 17. Explain access modifiers in TypeScript
 
 **Answer:**
 TypeScript supports three access modifiers: `public`, `private`, and `protected`.
@@ -568,7 +699,7 @@ console.log(dog.name); // OK
 // console.log(dog.species); // Error
 ```
 
-### 17. What are abstract classes?
+### 18. What are abstract classes?
 
 **Answer:**
 Abstract classes are base classes that cannot be instantiated directly. They may contain abstract methods that must be implemented by derived classes.
@@ -616,7 +747,7 @@ const circle = new Circle(5);
 console.log(circle.describe());
 ```
 
-### 18. What are getters and setters?
+### 19. What are getters and setters?
 
 **Answer:**
 Getters and setters provide a way to control access to object properties.
@@ -658,7 +789,7 @@ console.log(emp.annualSalary); // 60000
 // emp.salary = -1000; // Throws error
 ```
 
-### 19. What is the `readonly` modifier?
+### 20. What is the `readonly` modifier?
 
 **Answer:**
 The `readonly` modifier prevents properties from being changed after initialization.
@@ -699,7 +830,7 @@ const arr: ReadonlyArray<number> = [1, 2, 3];
 
 ## Interfaces vs Types
 
-### 20. What's the difference between interfaces and type aliases?
+### 21. What's the difference between interfaces and type aliases?
 
 **Answer:**
 Both interfaces and type aliases can be used to define object shapes, but they have some key differences.
@@ -767,7 +898,7 @@ class Square implements IShape {
 }
 ```
 
-### 21. When should you use interfaces vs type aliases?
+### 22. When should you use interfaces vs type aliases?
 
 **Answer:**
 **Use Interfaces when:**
@@ -809,7 +940,7 @@ interface AppConfig extends BaseConfig {
 
 ## Modules and Namespaces
 
-### 22. What's the difference between modules and namespaces?
+### 23. What's the difference between modules and namespaces?
 
 **Answer:**
 **Modules** (ES6 modules):
@@ -854,7 +985,7 @@ namespace UserManagement {
 const user = UserManagement.createUser("Bob", 25);
 ```
 
-### 23. What are ambient declarations?
+### 24. What are ambient declarations?
 
 **Answer:**
 Ambient declarations describe the type of existing JavaScript code to TypeScript using the `declare` keyword.
@@ -895,7 +1026,7 @@ declare module "*.css" {
 
 ## Configuration
 
-### 24. Explain important `tsconfig.json` options
+### 25. Explain important `tsconfig.json` options
 
 **Answer:**
 The `tsconfig.json` file configures TypeScript compiler options.
@@ -956,7 +1087,7 @@ The `tsconfig.json` file configures TypeScript compiler options.
 }
 ```
 
-### 25. What is `strict` mode in TypeScript?
+### 26. What is `strict` mode in TypeScript?
 
 **Answer:**
 `strict` mode enables all strict type-checking options at once.
@@ -1018,7 +1149,7 @@ const obj = {
 
 ## Best Practices
 
-### 26. What are some TypeScript best practices?
+### 27. What are some TypeScript best practices?
 
 **Answer:**
 
@@ -1096,7 +1227,7 @@ getUser(userId); // OK
 // getUser("user-456"); // Error: string is not assignable to UserId
 ```
 
-### 27. How do you handle errors with TypeScript?
+### 28. How do you handle errors with TypeScript?
 
 **Answer:**
 
@@ -1189,7 +1320,7 @@ async function fetchData(url: string): Promise<Result<any>> {
 
 ## Practical Scenarios
 
-### 28. How do you type a function that accepts variable arguments?
+### 29. How do you type a function that accepts variable arguments?
 
 **Answer:**
 
@@ -1230,7 +1361,7 @@ function format(template: string, ...values: (string | number)[]): string {
 format("Hello {0}, you are {1} years old", "Alice", 30);
 ```
 
-### 29. How do you type React components in TypeScript?
+### 30. How do you type React components in TypeScript?
 
 **Answer:**
 
@@ -1331,7 +1462,7 @@ const Form: React.FC = () => {
 };
 ```
 
-### 30. How do you create a type-safe API client?
+### 31. How do you create a type-safe API client?
 
 **Answer:**
 

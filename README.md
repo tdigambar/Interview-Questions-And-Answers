@@ -4,6 +4,24 @@ This repository contains various technical interview questions, answers, and sam
 
 ## Node.js Topics
 
+### Node.js Interview Questions
+
+The `node/NODEJS_INTERVIEW_QUESTIONS.md` file contains comprehensive interview questions and answers covering all essential Node.js topics from fundamentals to advanced concepts. This is an essential resource for developers preparing for Node.js interviews.
+
+### What You'll Learn
+
+- **Node.js Fundamentals**: Runtime, architecture, and core concepts
+- **Event Loop**: Understanding asynchronous programming and the event loop phases
+- **Modules**: CommonJS vs ES modules, require vs import
+- **Streams & Buffers**: Efficient data handling and binary data manipulation
+- **File System**: Asynchronous file operations and best practices
+- **HTTP & Web Servers**: Building web servers and handling HTTP requests
+- **Error Handling**: Comprehensive error management strategies
+- **Performance**: Optimization techniques, clustering, and monitoring
+- **Security**: Common vulnerabilities and prevention strategies
+- **Testing**: Unit testing, integration testing, and mocking
+- **Advanced Topics**: Worker threads, caching, database connections
+
 ### Libuv Samples
 
 The `node/libuv-samples/` directory contains comprehensive examples and demonstrations of how libuv works in Node.js. Libuv is the C library that provides the event loop and asynchronous I/O capabilities that make Node.js so powerful.
@@ -92,6 +110,7 @@ The `typescript/` directory contains comprehensive interview questions and answe
 ```
 Interview-Questions-And-Answers/
 ├── node/
+│   ├── NODEJS_INTERVIEW_QUESTIONS.md  # Comprehensive Node.js interview Q&A
 │   └── libuv-samples/          # Node.js libuv examples and demonstrations
 │       ├── examples/           # Individual example files
 │       ├── package.json        # Dependencies and scripts

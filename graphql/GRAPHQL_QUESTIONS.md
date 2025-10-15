@@ -847,7 +847,95 @@ type Query {
 
 ---
 
-### 17. How do you test GraphQL APIs?
+### 17. What is GraphQL query depth and how do you limit it?
+
+**Answer:** GraphQL query depth refers to the maximum number of levels deep a query can traverse through related objects. It's a security and performance measure to prevent deeply nested queries that could cause performance issues or DoS attacks.
+
+**What is Query Depth?**
+
+Query depth is measured by counting the number of levels in a GraphQL query:
+
+```graphql
+query {
+  user {           # Depth 1
+    posts {        # Depth 2
+      comments {   # Depth 3
+        author {   # Depth 4
+          profile { # Depth 5
+            bio     # Depth 6
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+This query has a depth of 6 levels.
+
+**Why Limit Query Depth?**
+
+- **Performance**: Deep queries can cause N+1 problems and slow database queries
+- **Security**: Prevents malicious queries that could overwhelm your server
+- **Resource Management**: Limits memory and CPU usage
+- **DoS Prevention**: Stops attackers from creating expensive queries
+
+**How to Limit Query Depth to 5:**
+
+```javascript
+const depthLimit = require('graphql-depth-limit');
+const { ApolloServer } = require('apollo-server');
+
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  validationRules: [depthLimit(5)], // Limit to depth 5
+  context: ({ req }) => {
+    // Your context logic
+  }
+});
+```
+
+**Error Response Example:**
+
+When a query exceeds the depth limit:
+
+```json
+{
+  "errors": [
+    {
+      "message": "Query depth 6 exceeds maximum depth of 5",
+      "locations": [
+        {
+          "line": 5,
+          "column": 7
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Alternative Implementation with Complexity:**
+
+```javascript
+const { createComplexityLimitRule } = require('graphql-validation-complexity');
+
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  validationRules: [
+    createComplexityLimitRule(1000, {
+      onCost: (cost) => console.log('Query cost:', cost),
+      maximumDepth: 5, // Limit depth to 5
+    })
+  ]
+});
+```
+
+---
+
+### 18. How do you test GraphQL APIs?
 
 **Answer:**
 
@@ -917,7 +1005,7 @@ describe('User queries', () => {
 ```
 
 ---
-### 18. What is GraphQL Federation?
+### 19. What is GraphQL Federation?
 
 **Answer:** GraphQL Federation is an architectural approach for building a unified GraphQL API (a "supergraph") from multiple independent GraphQL services (called "subgraphs"). This allows for a distributed development model where different teams or services can own and manage specific parts of the overall API schema.
 

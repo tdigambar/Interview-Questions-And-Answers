@@ -917,6 +917,78 @@ describe('User queries', () => {
 ```
 
 ---
+### 18. What is GraphQL Federation?
+
+**Answer:** GraphQL Federation is an architectural approach for building a unified GraphQL API (a "supergraph") from multiple independent GraphQL services (called "subgraphs"). This allows for a distributed development model where different teams or services can own and manage specific parts of the overall API schema.
+
+**Key Components of GraphQL Federation:**
+
+**Subgraphs:** These are individual GraphQL services, each responsible for a specific domain or set of data. Each subgraph defines its own GraphQL schema, including types, fields, and resolvers, and uses special directives (e.g., `@key`, `@extends`, `@requires`) to declare how its types relate to types in other subgraphs.
+
+**Supergraph Schema:** This is the combined, unified schema that clients interact with. It is automatically composed from the schemas of all registered subgraphs using a process called schema composition.
+
+**Router (or Gateway):** This acts as a single entry point for client requests. The router receives client GraphQL operations, analyzes the query plan, and then intelligently routes sub-queries to the appropriate subgraphs for data resolution. It then stitches the results from different subgraphs together before returning a single, consolidated response to the client.
+
+**Benefits of GraphQL Federation:**
+
+- **Modularity and Scalability:** Large, complex APIs can be broken down into smaller, more manageable subgraphs, allowing for independent development, deployment, and scaling of individual services.
+- **Improved Team Autonomy:** Different teams can own and evolve their respective subgraphs without tightly coupled dependencies on other teams.
+- **Single, Unified API:** Clients interact with a single GraphQL endpoint, simplifying data fetching and providing a consistent experience, even though the data originates from multiple backend services.
+- **Declarative Data Stitching:** Federation provides a declarative way to define relationships between types across different subgraphs, making it easier to combine data from various sources.
+
+**How it Works:**
+
+1. Each subgraph defines its schema and uses federation directives to specify shared entities and relationships with other subgraphs.
+2. A schema composition process combines these individual subgraph schemas into a single supergraph schema.
+3. Clients send GraphQL queries to the router.
+4. The router analyzes the query and generates an execution plan, determining which subgraphs are needed to resolve the requested data.
+5. The router sends sub-queries to the relevant subgraphs, collects the results, and stitches them together to form the final response.
+
+**Example Implementation:**
+
+```javascript
+// Users subgraph
+const userTypeDefs = gql`
+  type User @key(fields: "id") {
+    id: ID!
+    name: String!
+    email: String!
+  }
+
+  type Query {
+    user(id: ID!): User
+    users: [User!]!
+  }
+`;
+
+// Posts subgraph
+const postTypeDefs = gql`
+  type Post @key(fields: "id") {
+    id: ID!
+    title: String!
+    content: String!
+    author: User!
+  }
+
+  extend type User @key(fields: "id") {
+    id: ID! @external
+    posts: [Post!]!
+  }
+
+  type Query {
+    post(id: ID!): Post
+    posts: [Post!]!
+  }
+`;
+
+// Gateway configuration
+const gateway = new ApolloGateway({
+  serviceList: [
+    { name: 'users', url: 'http://localhost:4001' },
+    { name: 'posts', url: 'http://localhost:4002' }
+  ]
+});
+```
 
 ## Summary
 

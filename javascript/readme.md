@@ -640,31 +640,134 @@ console.log(fib.next().value); // 2
 
 ### 20. What is the difference between `call`, `apply`, and `bind`?
 
-These methods allow you to control the `this` context of a function.
+These methods allow you to control the `this` context of a function. All three are used to explicitly set what `this` refers to when a function is called.
+
+**Comparison Table:**
+
+| Feature | `call()` | `apply()` | `bind()` |
+|---------|----------|-----------|----------|
+| **Invokes immediately?** | ✅ Yes | ✅ Yes | ❌ No (returns function) |
+| **Arguments format** | Individual | Array | Individual |
+| **Returns** | Function result | Function result | New function |
+| **Use case** | Immediate execution | Immediate with array args | Create reusable function |
+
+**1. `call()` - Invokes immediately with arguments listed individually**
 
 ```javascript
-const person = {
-    name: "John",
-    greet: function(greeting, punctuation) {
-        return `${greeting}, I'm ${this.name}${punctuation}`;
+function greet(greeting, punctuation) {
+    return `${greeting}, ${this.name}${punctuation}`;
+}
+
+const person = { name: "John" };
+
+// Syntax: func.call(thisArg, arg1, arg2, ...)
+const result = greet.call(person, "Hello", "!");
+// Output: "Hello, John!"
+```
+
+**2. `apply()` - Invokes immediately with arguments as an array**
+
+```javascript
+function greet(greeting, punctuation) {
+    return `${greeting}, ${this.name}${punctuation}`;
+}
+
+const person = { name: "John" };
+
+// Syntax: func.apply(thisArg, [argsArray])
+const result = greet.apply(person, ["Hello", "!"]);
+// Output: "Hello, John!"
+
+// Useful with Math functions
+const numbers = [5, 6, 2, 3, 7];
+const max = Math.max.apply(null, numbers); // 7
+```
+
+**3. `bind()` - Returns a new function (doesn't invoke immediately)**
+
+```javascript
+function greet(greeting, punctuation) {
+    return `${greeting}, ${this.name}${punctuation}`;
+}
+
+const person = { name: "John" };
+
+// Syntax: func.bind(thisArg, arg1, arg2, ...)
+const boundGreet = greet.bind(person, "Hello");
+boundGreet("!"); // "Hello, John!"
+
+// Can invoke later
+setTimeout(boundGreet, 1000, "?");
+```
+
+**Practical Examples:**
+
+```javascript
+// Example 1: Borrowing Methods
+const person1 = {
+    name: "Alice",
+    introduce: function() {
+        return `Hi, I'm ${this.name}`;
     }
 };
 
-const anotherPerson = { name: "Alice" };
+const person2 = { name: "Bob" };
 
-// call - Invokes function with specific this and individual arguments
-const result1 = person.greet.call(anotherPerson, "Hello", "!");
-// "Hello, I'm Alice!"
+person1.introduce.call(person2);  // "Hi, I'm Bob"
+person1.introduce.apply(person2); // "Hi, I'm Bob"
+const bobIntroduce = person1.introduce.bind(person2);
+bobIntroduce(); // "Hi, I'm Bob"
 
-// apply - Invokes function with specific this and array of arguments
-const result2 = person.greet.apply(anotherPerson, ["Hi", "?"]);
-// "Hi, I'm Alice?"
+// Example 2: Event Handlers
+class Button {
+    constructor(label) {
+        this.label = label;
+        this.clicks = 0;
+    }
+    
+    handleClick() {
+        this.clicks++;
+        console.log(`${this.label} clicked ${this.clicks} times`);
+    }
+}
 
-// bind - Returns new function with bound this and preset arguments
-const boundGreet = person.greet.bind(anotherPerson, "Hey");
-const result3 = boundGreet("!");
-// "Hey, I'm Alice!"
+const button = new Button("Submit");
+
+// Without bind - loses context ❌
+// element.addEventListener('click', button.handleClick);
+
+// With bind - preserves context ✅
+element.addEventListener('click', button.handleClick.bind(button));
+
+// Example 3: Function Currying with bind
+function multiply(a, b) {
+    return a * b;
+}
+
+const double = multiply.bind(null, 2);
+const triple = multiply.bind(null, 3);
+
+console.log(double(5));  // 10
+console.log(triple(5));  // 15
+
+// Example 4: Array-like Objects
+function sumArguments() {
+    // Convert arguments to array
+    const args = Array.prototype.slice.call(arguments);
+    return args.reduce((sum, num) => sum + num, 0);
+}
+
+console.log(sumArguments(1, 2, 3, 4)); // 10
+
+// Modern alternative with spread operator
+const modernMax = Math.max(...[1, 2, 3, 4, 5]); // 5
 ```
+
+**When to Use Each:**
+
+- **Use `call()`**: When you need immediate execution with a few known arguments
+- **Use `apply()`**: When you need immediate execution with arguments in an array
+- **Use `bind()`**: When you need to create a new function with fixed `this` context (event handlers, callbacks, partial application)
 
 ---
 

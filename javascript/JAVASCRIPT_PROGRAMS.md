@@ -129,33 +129,45 @@ function reverseList(head) {
 **Problem:** Check if a string containing `()[]{}` is valid.
 
 ```javascript
+// Approach 1: Using array as stack (Recommended)
 function isValid(s) {
   const stack = [];
   const map = { ')': '(', ']': '[', '}': '{' };
+  
   for (let ch of s) {
-    if (!map[ch]) stack.push(ch);
-    else if (stack.pop() !== map[ch]) return false;
+    if (!map[ch]) {
+      stack.push(ch); // Opening bracket
+    } else if (stack.pop() !== map[ch]) {
+      return false; // Mismatched closing bracket
+    }
   }
-  return stack.length === 0;
+  
+  return stack.length === 0; // All brackets matched
 }
 
+console.log(isValid("{[()]}")); // true
+console.log(isValid("{[(])}")); // false
+console.log(isValid("(((")); // false
+
+// Approach 2: Using custom Stack class
 function isValidParentheses(s) {
-  const stack = new Stack();
+  const stack = [];
   const pairs = { '(': ')', '[': ']', '{': '}' };
   
   for (let char of s) {
     if (char in pairs) {
-      stack.push(char);
+      stack.push(char); // Opening bracket
     } else {
       const top = stack.pop();
-      if (pairs[top] !== char) return false;
+      if (pairs[top] !== char) return false; // Mismatched
     }
   }
   
-  return stack.isEmpty();
+  return stack.length === 0; // All brackets matched
 }
 
-console.log(isValid("{[()]}")); // true
+console.log(isValidParentheses("{[()]}")); // true
+console.log(isValidParentheses("{[(])}")); // false
 ```
 
 **Time Complexity:** O(n)  

@@ -139,6 +139,22 @@ function isValid(s) {
   return stack.length === 0;
 }
 
+function isValidParentheses(s) {
+  const stack = new Stack();
+  const pairs = { '(': ')', '[': ']', '{': '}' };
+  
+  for (let char of s) {
+    if (char in pairs) {
+      stack.push(char);
+    } else {
+      const top = stack.pop();
+      if (pairs[top] !== char) return false;
+    }
+  }
+  
+  return stack.isEmpty();
+}
+
 console.log(isValid("{[()]}")); // true
 ```
 

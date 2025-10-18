@@ -31,19 +31,67 @@ Node.js is a JavaScript runtime built on Chrome's V8 JavaScript engine. It uses 
 - **Non-blocking I/O**: I/O operations don't block the main thread
 - **Cross-platform**: Runs on Windows, macOS, and Linux
 
+**Architecture Components:**
+```
+┌─────────────────────────────────────┐
+│     JavaScript Code (Your App)      │
+└─────────────────────────────────────┘
+                 ↓
+┌─────────────────────────────────────┐
+│         Node.js Bindings            │
+└─────────────────────────────────────┘
+                 ↓
+┌──────────────────┬──────────────────┐
+│   V8 Engine      │     libuv        │
+│ (JS Execution)   │ (Event Loop,     │
+│                  │  I/O Operations) │
+└──────────────────┴──────────────────┘
+                 ↓
+┌─────────────────────────────────────┐
+│      Operating System (OS)          │
+└─────────────────────────────────────┘
+```
+
 **How it works:**
+
+1. **V8 Engine**: Compiles JavaScript to machine code
+2. **libuv**: Handles asynchronous I/O operations and event loop
+3. **Event Loop**: Manages callbacks and executes them when operations complete
+4. **Thread Pool**: Handles file system and DNS operations (default 4 threads)
+
+**Practical Example:**
 ```javascript
 // Node.js uses libuv for I/O operations and V8 for JavaScript execution
 const fs = require('fs');
 
-// Non-blocking file read
+console.log('1. Start reading file');
+
+// Non-blocking file read - delegated to libuv
 fs.readFile('file.txt', 'utf8', (err, data) => {
   if (err) throw err;
-  console.log(data);
+  console.log('3. File content:', data);
 });
 
-console.log('This runs immediately, not waiting for file read');
+console.log('2. This runs immediately, not waiting for file read');
+
+// Output order:
+// 1. Start reading file
+// 2. This runs immediately, not waiting for file read
+// 3. File content: [file contents]
+
+// Explanation:
+// - Line 1 executes synchronously
+// - fs.readFile is asynchronous - sent to libuv thread pool
+// - Line 2 executes immediately (doesn't wait)
+// - When file reading completes, callback is added to event loop queue
+// - Callback executes when event loop processes it
 ```
+
+**Why Node.js is Fast:**
+- **Non-blocking**: Can handle thousands of concurrent connections
+- **Event-driven**: Efficient callback mechanism
+- **V8 optimization**: JIT compilation to machine code
+- **Single-threaded**: No context switching overhead for JavaScript execution
 
 ### 2. What is the difference between Node.js and traditional server-side languages?
 
@@ -112,33 +160,154 @@ console.log(buf.toString());
 **Answer:**
 The event loop is the core of Node.js's asynchronous behavior. It's a single-threaded loop that continuously checks for events and executes callbacks.
 
-**Event Loop Phases:**
-1. **Timer Phase**: Executes `setTimeout()` and `setInterval()` callbacks
-2. **Pending Callbacks**: Executes I/O callbacks deferred to next iteration
-3. **Idle/Prepare**: Internal use only
-4. **Poll Phase**: Fetches new I/O events and executes I/O callbacks
-5. **Check Phase**: Executes `setImmediate()` callbacks
-6. **Close Callbacks**: Executes close event callbacks
+**Event Loop Architecture:**
+```
+   ┌───────────────────────────┐
+┌─>│           timers          │  setTimeout(), setInterval()
+│  └─────────────┬─────────────┘
+│  ┌─────────────┴─────────────┐
+│  │     pending callbacks     │  I/O callbacks deferred
+│  └─────────────┬─────────────┘
+│  ┌─────────────┴─────────────┐
+│  │       idle, prepare       │  Internal use
+│  └─────────────┬─────────────┘
+│  ┌─────────────┴─────────────┐
+│  │           poll            │  Retrieve new I/O events
+│  └─────────────┬─────────────┘
+│  ┌─────────────┴─────────────┐
+│  │           check           │  setImmediate()
+│  └─────────────┬─────────────┘
+│  ┌─────────────┴─────────────┐
+└──│      close callbacks      │  socket.on('close', ...)
+   └───────────────────────────┘
+```
 
-**Example:**
+**Event Loop Phases (Detailed):**
+
+1. **Timer Phase**: 
+   - Executes callbacks scheduled by `setTimeout()` and `setInterval()`
+   - Checks if timer threshold has been reached
+   - Executes callbacks in FIFO order
+
+2. **Pending Callbacks**: 
+   - Executes I/O callbacks that were deferred
+   - Example: TCP errors like ECONNREFUSED
+
+3. **Idle/Prepare**: 
+   - Internal use only by Node.js
+
+4. **Poll Phase** (Most important):
+   - Retrieves new I/O events
+   - Executes I/O related callbacks (except close, timers, setImmediate)
+   - Will block here if no callbacks are pending
+   - Two main functions:
+     a) Calculate how long to block and poll for I/O
+     b) Process events in the poll queue
+
+5. **Check Phase**: 
+   - Executes `setImmediate()` callbacks
+   - Allows callbacks to execute immediately after poll phase
+
+6. **Close Callbacks**: 
+   - Executes close event callbacks
+   - Example: `socket.on('close', callback)`
+
+**Microtasks vs Macrotasks:**
+
+**Microtasks** (Executed BEFORE next event loop phase):
+- `process.nextTick()` - Highest priority
+- `Promise.then()` / `Promise.catch()` / `Promise.finally()`
+- `queueMicrotask()`
+
+**Macrotasks** (Event loop phases):
+- `setTimeout()` / `setInterval()`
+- `setImmediate()`
+- I/O operations
+
+**Execution Order Example:**
 ```javascript
 console.log('1. Start');
 
+// Macrotask - Timer phase
 setTimeout(() => console.log('2. setTimeout'), 0);
+
+// Macrotask - Check phase
 setImmediate(() => console.log('3. setImmediate'));
+
+// Microtask - Highest priority
 process.nextTick(() => console.log('4. nextTick'));
+
+// Microtask - Promise queue
 Promise.resolve().then(() => console.log('5. Promise'));
 
-console.log('6. End');
+// Microtask queue
+queueMicrotask(() => console.log('6. queueMicrotask'));
+
+console.log('7. End');
 
 // Output:
 // 1. Start
-// 6. End
-// 4. nextTick
-// 5. Promise
-// 2. setTimeout
-// 3. setImmediate
+// 7. End
+// 4. nextTick          ← Microtasks execute first
+// 5. Promise           ← Then promise microtasks
+// 6. queueMicrotask    ← Then queued microtasks
+// 2. setTimeout        ← Then macrotasks (timers)
+// 3. setImmediate      ← Then check phase
+
+// Explanation:
+// 1. Synchronous code runs first (1, 7)
+// 2. All microtasks execute before moving to next phase
+// 3. process.nextTick has highest priority among microtasks
+// 4. Then promises and queueMicrotask
+// 5. Then event loop phases execute (timers, check)
 ```
+
+**Complex Example:**
+```javascript
+console.log('Script start');
+
+setTimeout(() => {
+  console.log('setTimeout 1');
+  Promise.resolve().then(() => console.log('Promise in setTimeout 1'));
+}, 0);
+
+Promise.resolve()
+  .then(() => {
+    console.log('Promise 1');
+    process.nextTick(() => console.log('nextTick in Promise 1'));
+  })
+  .then(() => console.log('Promise 2'));
+
+process.nextTick(() => {
+  console.log('nextTick 1');
+  process.nextTick(() => console.log('nextTick 2'));
+});
+
+setTimeout(() => {
+  console.log('setTimeout 2');
+}, 0);
+
+console.log('Script end');
+
+// Output:
+// Script start
+// Script end
+// nextTick 1
+// nextTick 2
+// Promise 1
+// Promise 2
+// nextTick in Promise 1
+// setTimeout 1
+// Promise in setTimeout 1
+// setTimeout 2
+```
+
+**Key Takeaways:**
+- Event loop is single-threaded but can handle concurrent operations
+- Microtasks always execute before next event loop phase
+- `process.nextTick()` has highest priority
+- Understanding phases helps predict execution order
+- I/O operations are handled by libuv thread pool
 
 ### 5. What's the difference between setImmediate and setTimeout(0)?
 
@@ -392,46 +561,115 @@ npm run script-name           # Run npm script
 ### 11. What are streams in Node.js?
 
 **Answer:**
-Streams are objects that let you read data from a source or write data to a destination in a continuous fashion.
+Streams are objects that let you read data from a source or write data to a destination in a continuous fashion. They process data piece by piece (chunks) instead of loading everything into memory.
+
+**Why use Streams?**
+- **Memory efficient**: Process large files without loading entire file into memory
+- **Time efficient**: Start processing data before all data is available
+- **Composable**: Chain multiple operations together
 
 **Types of Streams:**
-1. **Readable**: Read data (fs.createReadStream)
-2. **Writable**: Write data (fs.createWriteStream)
-3. **Duplex**: Both read and write (net.Socket)
-4. **Transform**: Modify data while reading/writing (zlib.createGzip)
 
-**Example:**
+1. **Readable Stream**: Read data from a source
+   - Examples: `fs.createReadStream()`, `http.IncomingMessage`, `process.stdin`
+   
+2. **Writable Stream**: Write data to a destination
+   - Examples: `fs.createWriteStream()`, `http.ServerResponse`, `process.stdout`
+   
+3. **Duplex Stream**: Both readable and writable
+   - Examples: `net.Socket`, `TCP sockets`
+   
+4. **Transform Stream**: Modify data while reading/writing
+   - Examples: `zlib.createGzip()`, `crypto.createCipher()`
+
+**Stream Flow:**
+```
+Source → Readable Stream → Transform Stream → Writable Stream → Destination
+(File)                     (Compress/Encrypt)                   (File/Network)
+```
+
+**Basic Stream Example:**
 ```javascript
 const fs = require('fs');
-const { pipeline } = require('stream');
 
-// Readable stream
-const readable = fs.createReadStream('input.txt');
+// Without streams - loads entire file into memory (BAD for large files)
+fs.readFile('large-file.txt', (err, data) => {
+  if (err) throw err;
+  console.log(data); // Entire file in memory
+});
 
-// Writable stream
-const writable = fs.createWriteStream('output.txt');
+// With streams - processes data in chunks (GOOD for large files)
+const readable = fs.createReadStream('large-file.txt', {
+  encoding: 'utf8',
+  highWaterMark: 16 * 1024 // 16KB chunks (default is 64KB)
+});
 
-// Transform stream
+readable.on('data', (chunk) => {
+  console.log('Received chunk:', chunk.length, 'bytes');
+  // Process chunk
+});
+
+readable.on('end', () => {
+  console.log('Finished reading file');
+});
+
+readable.on('error', (err) => {
+  console.error('Error:', err);
+});
+```
+
+**Transform Stream Example:**
+```javascript
 const { Transform } = require('stream');
-const upperCase = new Transform({
+const fs = require('fs');
+
+// Create custom transform stream
+const upperCaseTransform = new Transform({
   transform(chunk, encoding, callback) {
-    callback(null, chunk.toString().toUpperCase());
+    // Convert chunk to uppercase
+    this.push(chunk.toString().toUpperCase());
+    callback();
   }
 });
 
-// Pipe streams
-readable
-  .pipe(upperCase)
-  .pipe(writable)
+// Another transform example - line counter
+const lineCounter = new Transform({
+  constructor() {
+    super();
+    this.lineCount = 0;
+  },
+  transform(chunk, encoding, callback) {
+    const lines = chunk.toString().split('\n').length - 1;
+    this.lineCount += lines;
+    this.push(chunk); // Pass through unchanged
+    callback();
+  },
+  flush(callback) {
+    console.log(`Total lines: ${this.lineCount}`);
+    callback();
+  }
+});
+
+// Chain streams together
+fs.createReadStream('input.txt')
+  .pipe(upperCaseTransform)
+  .pipe(fs.createWriteStream('output.txt'))
   .on('finish', () => {
     console.log('File processing complete');
   });
+```
 
-// Using pipeline (recommended)
+**Pipeline (Recommended Approach):**
+```javascript
+const { pipeline } = require('stream');
+const fs = require('fs');
+const zlib = require('zlib');
+
+// Pipeline handles errors and cleanup automatically
 pipeline(
   fs.createReadStream('input.txt'),
-  upperCase,
-  fs.createWriteStream('output.txt'),
+  zlib.createGzip(), // Compress
+  fs.createWriteStream('input.txt.gz'),
   (err) => {
     if (err) {
       console.error('Pipeline failed:', err);
@@ -440,7 +678,136 @@ pipeline(
     }
   }
 );
+
+// Complex pipeline example
+const { Transform } = require('stream');
+
+const addTimestamp = new Transform({
+  transform(chunk, encoding, callback) {
+    const line = chunk.toString();
+    const timestamped = `[${new Date().toISOString()}] ${line}`;
+    callback(null, timestamped);
+  }
+});
+
+pipeline(
+  fs.createReadStream('app.log'),
+  addTimestamp,
+  zlib.createGzip(),
+  fs.createWriteStream('app.log.gz'),
+  (err) => {
+    if (err) {
+      console.error('Log compression failed:', err);
+    } else {
+      console.log('Log compressed successfully');
+    }
+  }
+);
 ```
+
+**Readable Stream Modes:**
+
+1. **Flowing Mode**: Data flows automatically
+```javascript
+const readable = fs.createReadStream('file.txt');
+
+readable.on('data', (chunk) => {
+  console.log('Received:', chunk);
+});
+```
+
+2. **Paused Mode**: Data must be explicitly read
+```javascript
+const readable = fs.createReadStream('file.txt');
+
+readable.on('readable', () => {
+  let chunk;
+  while ((chunk = readable.read()) !== null) {
+    console.log('Received:', chunk);
+  }
+});
+```
+
+**Backpressure Handling:**
+```javascript
+const fs = require('fs');
+
+const readable = fs.createReadStream('large-file.txt');
+const writable = fs.createWriteStream('output.txt');
+
+readable.on('data', (chunk) => {
+  // write() returns false if internal buffer is full
+  const canContinue = writable.write(chunk);
+  
+  if (!canContinue) {
+    // Pause reading until drain event
+    readable.pause();
+  }
+});
+
+// Resume reading when writable is ready
+writable.on('drain', () => {
+  readable.resume();
+});
+
+readable.on('end', () => {
+  writable.end();
+});
+
+// Or use pipe() which handles backpressure automatically
+readable.pipe(writable);
+```
+
+**Real-world Use Cases:**
+```javascript
+// 1. File upload with progress
+const http = require('http');
+const fs = require('fs');
+
+http.createServer((req, res) => {
+  if (req.method === 'POST') {
+    let bytesReceived = 0;
+    const writable = fs.createWriteStream('upload.file');
+    
+    req.on('data', (chunk) => {
+      bytesReceived += chunk.length;
+      console.log(`Received: ${bytesReceived} bytes`);
+    });
+    
+    req.pipe(writable);
+    
+    writable.on('finish', () => {
+      res.end('Upload complete');
+    });
+  }
+}).listen(3000);
+
+// 2. CSV processing
+const { Transform } = require('stream');
+const fs = require('fs');
+
+const csvParser = new Transform({
+  transform(chunk, encoding, callback) {
+    const lines = chunk.toString().split('\n');
+    lines.forEach(line => {
+      const [name, age, city] = line.split(',');
+      const json = JSON.stringify({ name, age, city }) + '\n';
+      this.push(json);
+    });
+    callback();
+  }
+});
+
+fs.createReadStream('data.csv')
+  .pipe(csvParser)
+  .pipe(fs.createWriteStream('data.json'));
+```
+
+**Key Benefits:**
+- **Memory Efficiency**: Process 1GB file with 10MB memory
+- **Time Efficiency**: Start processing immediately
+- **Composability**: Chain operations easily
+- **Backpressure**: Automatic flow control
 
 ### 12. What is a Buffer in Node.js?
 
@@ -729,28 +1096,207 @@ process.on('SIGTERM', () => {
 Several strategies can improve Node.js performance:
 
 **1. Use Clustering:**
+
+Clustering allows you to create multiple Node.js processes (workers) that share the same server port, utilizing all CPU cores.
+
+**How Clustering Works:**
+```
+┌─────────────────────────────────────┐
+│         Master Process              │
+│      (Manages Workers)              │
+└──────────┬──────────────────────────┘
+           │
+    ┌──────┴──────┬──────────┬────────┐
+    │             │          │        │
+┌───▼───┐   ┌───▼───┐  ┌───▼───┐  ┌──▼────┐
+│Worker1│   │Worker2│  │Worker3│  │Worker4│
+│(CPU 1)│   │(CPU 2)│  │(CPU 3)│  │(CPU 4)│
+└───────┘   └───────┘  └───────┘  └───────┘
+```
+
+**Basic Clustering:**
+```javascript
+const cluster = require('cluster');
+const http = require('http');
+const numCPUs = require('os').cpus().length;
+
+if (cluster.isMaster) {
+  console.log(`Master ${process.pid} is running`);
+  console.log(`Forking ${numCPUs} workers...`);
+  
+  // Fork workers (one per CPU core)
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+  
+  // Handle worker exit
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`Worker ${worker.process.pid} died`);
+    console.log('Starting a new worker...');
+    cluster.fork(); // Restart worker automatically
+  });
+  
+  // Track online workers
+  cluster.on('online', (worker) => {
+    console.log(`Worker ${worker.process.pid} is online`);
+  });
+  
+} else {
+  // Worker process - runs your application
+  const server = http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end(`Handled by process ${process.pid}\n`);
+  });
+  
+  server.listen(3000);
+  console.log(`Worker ${process.pid} started`);
+}
+```
+
+**Advanced Clustering with Load Balancing:**
+```javascript
+const cluster = require('cluster');
+const express = require('express');
+const os = require('os');
+
+if (cluster.isMaster) {
+  const numWorkers = os.cpus().length;
+  
+  console.log(`Master cluster setting up ${numWorkers} workers...`);
+  
+  // Track worker metrics
+  const workers = {};
+  
+  for (let i = 0; i < numWorkers; i++) {
+    const worker = cluster.fork();
+    workers[worker.id] = {
+      pid: worker.process.pid,
+      requests: 0
+    };
+  }
+  
+  // Communication between master and workers
+  Object.values(cluster.workers).forEach(worker => {
+    worker.on('message', (msg) => {
+      if (msg.cmd === 'notifyRequest') {
+        workers[worker.id].requests++;
+        console.log(`Worker ${worker.id} handled request. Total: ${workers[worker.id].requests}`);
+      }
+    });
+  });
+  
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('Master received SIGTERM, shutting down workers...');
+    Object.values(cluster.workers).forEach(worker => {
+      worker.kill();
+    });
+  });
+  
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`Worker ${worker.process.pid} died with code ${code}`);
+    delete workers[worker.id];
+    
+    // Don't restart if intentional shutdown
+    if (signal !== 'SIGTERM') {
+      const newWorker = cluster.fork();
+      workers[newWorker.id] = {
+        pid: newWorker.process.pid,
+        requests: 0
+      };
+    }
+  });
+  
+} else {
+  // Worker process
+  const app = express();
+  
+  app.get('/', (req, res) => {
+    // Notify master of request
+    process.send({ cmd: 'notifyRequest' });
+    
+    res.send(`Worker ${process.pid} handled request`);
+  });
+  
+  // Simulate CPU-intensive task
+  app.get('/heavy', (req, res) => {
+    const start = Date.now();
+    // CPU-intensive operation
+    let result = 0;
+    for (let i = 0; i < 1e7; i++) {
+      result += Math.sqrt(i);
+    }
+    const duration = Date.now() - start;
+    res.send(`Worker ${process.pid} completed in ${duration}ms`);
+  });
+  
+  app.listen(3000, () => {
+    console.log(`Worker ${process.pid} listening on port 3000`);
+  });
+}
+```
+
+**Zero-Downtime Restart:**
 ```javascript
 const cluster = require('cluster');
 const numCPUs = require('os').cpus().length;
 
 if (cluster.isMaster) {
-  console.log(`Master ${process.pid} is running`);
-  
-  // Fork workers
   for (let i = 0; i < numCPUs; i++) {
     cluster.fork();
   }
   
-  cluster.on('exit', (worker, code, signal) => {
-    console.log(`Worker ${worker.process.pid} died`);
-    cluster.fork(); // Restart worker
+  // Graceful restart function
+  function restartWorkers() {
+    const workers = Object.values(cluster.workers);
+    
+    const restartWorker = (workerIndex) => {
+      const worker = workers[workerIndex];
+      if (!worker) return;
+      
+      // Disconnect worker (stops accepting new connections)
+      worker.disconnect();
+      
+      // Fork new worker
+      const newWorker = cluster.fork();
+      
+      // When new worker is ready, kill old worker
+      newWorker.on('listening', () => {
+        worker.kill();
+        
+        // Restart next worker after delay
+        setTimeout(() => {
+          restartWorker(workerIndex + 1);
+        }, 1000);
+      });
+    };
+    
+    restartWorker(0);
+  }
+  
+  // Trigger restart on SIGUSR2 signal
+  process.on('SIGUSR2', () => {
+    console.log('Received SIGUSR2, restarting workers...');
+    restartWorkers();
   });
+  
 } else {
-  // Worker process
   require('./app.js');
-  console.log(`Worker ${process.pid} started`);
 }
 ```
+
+**Benefits of Clustering:**
+- Utilizes all CPU cores
+- Automatic load balancing
+- Process isolation (one crash doesn't affect others)
+- Zero-downtime deployments
+- Increased throughput
+
+**When to Use:**
+- Production environments
+- CPU-bound operations
+- High-traffic applications
+- Need for high availability
 
 **2. Use Worker Threads for CPU-intensive tasks:**
 ```javascript

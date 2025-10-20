@@ -1,0 +1,42 @@
+{
+  "name": "todo-crud-api",
+  "version": "1.0.0",
+  "description": "CRUD API for Todo application with Express and MongoDB Native Driver",
+  "main": "todoApplication.js",
+  "scripts": {
+    "start": "node todoApplication.js",
+    "dev": "nodemon todoApplication.js",
+    "test": "jest --verbose --coverage",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage --coverageDirectory=coverage"
+  },
+  "keywords": [
+    "express",
+    "mongodb",
+    "crud",
+    "todo",
+    "api",
+    "native-driver"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongodb": "^6.3.0",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "nodemon": "^3.0.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/"
+    ],
+    "testTimeout": 10000
+  }
+}
+

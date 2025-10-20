@@ -1168,6 +1168,470 @@ for (let i = 0; i < 1000000; i++) {
 console.timeEnd('optimized');
 ```
 
+### 31. What are cookies and how do you work with them in JavaScript?
+
+Cookies are small pieces of data stored in the browser that are sent to the server with every HTTP request. They are commonly used for session management, personalization, and tracking.
+
+**Cookie Characteristics**:
+- Maximum size: ~4KB per cookie
+- Automatically sent with HTTP requests to the same domain
+- Can be set with an expiration date
+- Can be restricted to secure (HTTPS) connections
+- Can be marked as HttpOnly (inaccessible to JavaScript)
+
+```javascript
+// Setting a cookie
+function setCookie(name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = "expires=" + date.toUTCString();
+    document.cookie = `${name}=${value}; ${expires}; path=/`;
+}
+
+// Getting a cookie
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const cookies = document.cookie.split(';');
+    
+    for (let i = 0; i < cookies.length; i++) {
+        let cookie = cookies[i].trim();
+        if (cookie.indexOf(nameEQ) === 0) {
+            return cookie.substring(nameEQ.length);
+        }
+    }
+    return null;
+}
+
+// Deleting a cookie
+function deleteCookie(name) {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+}
+
+// Usage examples
+setCookie('username', 'john_doe', 7); // Expires in 7 days
+setCookie('theme', 'dark', 365); // Expires in 1 year
+
+console.log(getCookie('username')); // 'john_doe'
+
+deleteCookie('username');
+
+// Advanced cookie settings
+function setSecureCookie(name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = "expires=" + date.toUTCString();
+    
+    // Secure: only transmitted over HTTPS
+    // SameSite: prevents CSRF attacks
+    document.cookie = `${name}=${value}; ${expires}; path=/; Secure; SameSite=Strict`;
+}
+
+// Cookie utility class
+class CookieManager {
+    static set(name, value, options = {}) {
+        const {
+            days = 7,
+            path = '/',
+            domain = '',
+            secure = false,
+            sameSite = 'Lax'
+        } = options;
+        
+        let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
+        
+        if (days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            cookieString += `; expires=${date.toUTCString()}`;
+        }
+        
+        cookieString += `; path=${path}`;
+        
+        if (domain) {
+            cookieString += `; domain=${domain}`;
+        }
+        
+        if (secure) {
+            cookieString += '; Secure';
+        }
+        
+        cookieString += `; SameSite=${sameSite}`;
+        
+        document.cookie = cookieString;
+    }
+    
+    static get(name) {
+        const nameEQ = encodeURIComponent(name) + "=";
+        const cookies = document.cookie.split(';');
+        
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.indexOf(nameEQ) === 0) {
+                return decodeURIComponent(cookie.substring(nameEQ.length));
+            }
+        }
+        return null;
+    }
+    
+    static delete(name, path = '/') {
+        document.cookie = `${encodeURIComponent(name)}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}`;
+    }
+    
+    static getAll() {
+        const cookies = {};
+        const cookieStrings = document.cookie.split(';');
+        
+        for (let cookie of cookieStrings) {
+            const [name, value] = cookie.trim().split('=');
+            if (name) {
+                cookies[decodeURIComponent(name)] = decodeURIComponent(value || '');
+            }
+        }
+        return cookies;
+    }
+}
+
+// Usage
+CookieManager.set('user', 'alice', { days: 30, secure: true, sameSite: 'Strict' });
+console.log(CookieManager.get('user'));
+console.log(CookieManager.getAll());
+CookieManager.delete('user');
+```
+
+**Important Considerations**:
+- Cookies are sent with every request, affecting performance
+- Sensitive data should not be stored in cookies (use HttpOnly on server)
+- GDPR requires user consent for non-essential cookies
+- Use Secure flag for HTTPS-only transmission
+- Use SameSite attribute to prevent CSRF attacks
+
+### 32. What is Web Storage (localStorage and sessionStorage)?
+
+Web Storage API provides two mechanisms for storing data in the browser: `localStorage` (persistent) and `sessionStorage` (session-only). Both offer more storage space than cookies (typically 5-10MB) and don't automatically send data with HTTP requests.
+
+**Comparison: localStorage vs sessionStorage vs Cookies**:
+
+| Feature | localStorage | sessionStorage | Cookies |
+|---------|-------------|----------------|---------|
+| Storage Limit | ~5-10MB | ~5-10MB | ~4KB |
+| Expiration | Never (until cleared) | Tab/window close | Configurable |
+| Accessibility | Same origin | Same tab/window | Server + Client |
+| Sent with HTTP | No | No | Yes (automatic) |
+| API | Simple (key-value) | Simple (key-value) | String manipulation |
+
+```javascript
+// ========== localStorage ==========
+// Persists even after browser is closed
+
+// Setting items
+localStorage.setItem('username', 'john_doe');
+localStorage.setItem('theme', 'dark');
+
+// Getting items
+const username = localStorage.getItem('username');
+console.log(username); // 'john_doe'
+
+// Removing items
+localStorage.removeItem('username');
+
+// Clearing all items
+localStorage.clear();
+
+// Working with objects (must stringify)
+const user = {
+    name: 'Alice',
+    age: 30,
+    email: 'alice@example.com'
+};
+
+localStorage.setItem('user', JSON.stringify(user));
+const storedUser = JSON.parse(localStorage.getItem('user'));
+console.log(storedUser.name); // 'Alice'
+
+// ========== sessionStorage ==========
+// Cleared when tab/window is closed
+
+sessionStorage.setItem('tempData', 'temporary value');
+const tempData = sessionStorage.getItem('tempData');
+sessionStorage.removeItem('tempData');
+sessionStorage.clear();
+
+// ========== Storage Events ==========
+// Listen for storage changes in other tabs/windows
+
+window.addEventListener('storage', (event) => {
+    console.log('Storage changed:');
+    console.log('Key:', event.key);
+    console.log('Old Value:', event.oldValue);
+    console.log('New Value:', event.newValue);
+    console.log('URL:', event.url);
+    console.log('Storage Area:', event.storageArea);
+});
+
+// ========== LocalStorage Utility Class ==========
+
+class StorageManager {
+    // Set item with optional expiration
+    static setItem(key, value, expirationMinutes = null) {
+        const item = {
+            value: value,
+            timestamp: Date.now()
+        };
+        
+        if (expirationMinutes) {
+            item.expiration = Date.now() + (expirationMinutes * 60 * 1000);
+        }
+        
+        try {
+            localStorage.setItem(key, JSON.stringify(item));
+            return true;
+        } catch (error) {
+            console.error('Error setting item:', error);
+            return false;
+        }
+    }
+    
+    // Get item (checks expiration)
+    static getItem(key) {
+        try {
+            const itemStr = localStorage.getItem(key);
+            
+            if (!itemStr) {
+                return null;
+            }
+            
+            const item = JSON.parse(itemStr);
+            
+            // Check if expired
+            if (item.expiration && Date.now() > item.expiration) {
+                localStorage.removeItem(key);
+                return null;
+            }
+            
+            return item.value;
+        } catch (error) {
+            console.error('Error getting item:', error);
+            return null;
+        }
+    }
+    
+    // Remove item
+    static removeItem(key) {
+        try {
+            localStorage.removeItem(key);
+            return true;
+        } catch (error) {
+            console.error('Error removing item:', error);
+            return false;
+        }
+    }
+    
+    // Clear all items
+    static clear() {
+        try {
+            localStorage.clear();
+            return true;
+        } catch (error) {
+            console.error('Error clearing storage:', error);
+            return false;
+        }
+    }
+    
+    // Get all keys
+    static keys() {
+        return Object.keys(localStorage);
+    }
+    
+    // Get storage size
+    static getSize() {
+        let total = 0;
+        for (let key in localStorage) {
+            if (localStorage.hasOwnProperty(key)) {
+                total += localStorage[key].length + key.length;
+            }
+        }
+        return (total / 1024).toFixed(2) + ' KB';
+    }
+    
+    // Check if storage is available
+    static isAvailable() {
+        try {
+            const test = '__storage_test__';
+            localStorage.setItem(test, test);
+            localStorage.removeItem(test);
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+}
+
+// Usage examples
+StorageManager.setItem('user', { name: 'Bob', role: 'admin' });
+StorageManager.setItem('tempToken', 'abc123', 30); // Expires in 30 minutes
+
+const user = StorageManager.getItem('user');
+console.log(user); // { name: 'Bob', role: 'admin' }
+
+console.log('Storage size:', StorageManager.getSize());
+console.log('All keys:', StorageManager.keys());
+
+// ========== Advanced Patterns ==========
+
+// 1. Storage with encryption (basic example)
+class SecureStorage {
+    static encode(data) {
+        // Simple encoding (use a real encryption library in production)
+        return btoa(JSON.stringify(data));
+    }
+    
+    static decode(data) {
+        try {
+            return JSON.parse(atob(data));
+        } catch {
+            return null;
+        }
+    }
+    
+    static setSecure(key, value) {
+        const encoded = this.encode(value);
+        localStorage.setItem(key, encoded);
+    }
+    
+    static getSecure(key) {
+        const encoded = localStorage.getItem(key);
+        return encoded ? this.decode(encoded) : null;
+    }
+}
+
+SecureStorage.setSecure('sensitive', { apiKey: 'secret123' });
+console.log(SecureStorage.getSecure('sensitive'));
+
+// 2. Storage with versioning
+class VersionedStorage {
+    static VERSION = '1.0';
+    
+    static set(key, value) {
+        const data = {
+            version: this.VERSION,
+            data: value,
+            timestamp: Date.now()
+        };
+        localStorage.setItem(key, JSON.stringify(data));
+    }
+    
+    static get(key) {
+        const item = localStorage.getItem(key);
+        if (!item) return null;
+        
+        const parsed = JSON.parse(item);
+        
+        // Check version compatibility
+        if (parsed.version !== this.VERSION) {
+            console.warn('Version mismatch, clearing old data');
+            localStorage.removeItem(key);
+            return null;
+        }
+        
+        return parsed.data;
+    }
+}
+
+// 3. Storage with quota management
+class QuotaManager {
+    static getUsage() {
+        if (navigator.storage && navigator.storage.estimate) {
+            navigator.storage.estimate().then(estimate => {
+                const usage = (estimate.usage / estimate.quota * 100).toFixed(2);
+                console.log(`Storage usage: ${usage}%`);
+                console.log(`Used: ${(estimate.usage / 1024 / 1024).toFixed(2)} MB`);
+                console.log(`Quota: ${(estimate.quota / 1024 / 1024).toFixed(2)} MB`);
+            });
+        }
+    }
+    
+    static async isStorageAvailable(requiredBytes) {
+        if (navigator.storage && navigator.storage.estimate) {
+            const estimate = await navigator.storage.estimate();
+            return (estimate.quota - estimate.usage) >= requiredBytes;
+        }
+        return true; // Assume available if API not supported
+    }
+}
+
+QuotaManager.getUsage();
+
+// ========== Best Practices ==========
+
+// 1. Always use try-catch for storage operations
+function safeStorageOperation() {
+    try {
+        localStorage.setItem('key', 'value');
+    } catch (error) {
+        if (error.name === 'QuotaExceededError') {
+            console.error('Storage quota exceeded');
+            // Handle cleanup or notify user
+        } else {
+            console.error('Storage error:', error);
+        }
+    }
+}
+
+// 2. Validate data before storing
+function storeUserPreferences(preferences) {
+    if (typeof preferences !== 'object' || preferences === null) {
+        throw new Error('Invalid preferences object');
+    }
+    
+    try {
+        localStorage.setItem('userPreferences', JSON.stringify(preferences));
+    } catch (error) {
+        console.error('Failed to store preferences:', error);
+    }
+}
+
+// 3. Implement fallbacks
+function getValue(key, defaultValue) {
+    try {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : defaultValue;
+    } catch {
+        return defaultValue;
+    }
+}
+
+// 4. Clear old/expired data periodically
+function cleanupOldData() {
+    const now = Date.now();
+    const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+    
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        try {
+            const item = JSON.parse(localStorage.getItem(key));
+            if (item.timestamp && (now - item.timestamp) > maxAge) {
+                localStorage.removeItem(key);
+            }
+        } catch {
+            // Skip items that aren't in expected format
+        }
+    }
+}
+```
+
+**Common Use Cases**:
+- **localStorage**: User preferences, shopping cart, offline data, cached responses
+- **sessionStorage**: Form data, temporary state, wizard steps, session-specific data
+- **Cookies**: Authentication tokens, user sessions, tracking, cross-domain data
+
+**Security Considerations**:
+- Never store sensitive data (passwords, credit cards) in plain text
+- XSS attacks can access localStorage/sessionStorage
+- Use appropriate encryption for sensitive data
+- Implement data validation and sanitization
+- Clear storage on logout for security-sensitive apps
+- Consider using IndexedDB for larger datasets
+
 ---
 
 ## Conclusion
@@ -1181,3 +1645,4 @@ Key areas covered include:
 - **Advanced Concepts**: Proxies, symbols, generators, decorators
 - **Performance**: Engine optimization, memory management
 - **Modern Patterns**: Web Workers, async iterators, tagged templates
+- **Browser Storage**: Cookies, localStorage, sessionStorage, and web storage APIs

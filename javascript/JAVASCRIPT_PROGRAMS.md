@@ -14,6 +14,7 @@ Comprehensive collection of common JavaScript interview programming problems wit
 6. [Mathematical Problems](#mathematical-problems)
 7. [String Manipulation](#string-manipulation)
 8. [Array Algorithms](#array-algorithms)
+   - [Flatten a Nested Array](#-flatten-a-nested-array)
 9. [Binary Array Problems](#binary-array-problems)
 10. [Dynamic Programming](#dynamic-programming)
 11. [Stack Problems](#stack-problems)
@@ -573,6 +574,241 @@ console.log(mergeSortedArraysQuick([1, 3, 5, 7], [2, 4, 6, 8]));
 ```
 
 **Time Complexity:** O((n + m) log(n + m))
+
+---
+
+### ✅ Flatten a Nested Array
+
+**Problem:** Flatten a multi-level nested array into a single-level array.
+
+**Input:** `[1, [2, [3, [4]], 5], 6]`  
+**Output:** `[1, 2, 3, 4, 5, 6]`
+
+---
+
+#### ✅ 1️⃣ Using Built-in `flat()` Method (ES2019)
+
+```javascript
+function flattenArray(arr) {
+  return arr.flat(Infinity); // Infinity flattens all levels
+}
+
+console.log(flattenArray([1, [2, [3, [4]], 5], 6]));
+// Output: [1, 2, 3, 4, 5, 6]
+
+// Flatten specific depth
+console.log([1, [2, [3, [4]]]].flat(1));  // [1, 2, [3, [4]]]
+console.log([1, [2, [3, [4]]]].flat(2));  // [1, 2, 3, [4]]
+```
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(n)
+
+---
+
+#### ⚡ 2️⃣ Recursive Approach (Most Common in Interviews)
+
+```javascript
+function flattenRecursive(arr) {
+  const result = [];
+  
+  for (let item of arr) {
+    if (Array.isArray(item)) {
+      result.push(...flattenRecursive(item)); // Recursive call
+    } else {
+      result.push(item);
+    }
+  }
+  
+  return result;
+}
+
+console.log(flattenRecursive([1, [2, [3, [4]], 5], 6]));
+// Output: [1, 2, 3, 4, 5, 6]
+```
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(d) where d is the depth of nesting
+
+---
+
+#### 🧮 3️⃣ Using `reduce()` (Functional Approach)
+
+```javascript
+function flattenReduce(arr) {
+  return arr.reduce((acc, item) => {
+    return acc.concat(Array.isArray(item) ? flattenReduce(item) : item);
+  }, []);
+}
+
+console.log(flattenReduce([1, [2, [3, [4]], 5], 6]));
+// Output: [1, 2, 3, 4, 5, 6]
+```
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(d)
+
+---
+
+#### 🔄 4️⃣ Iterative Approach with Stack (No Recursion)
+
+```javascript
+function flattenIterative(arr) {
+  const stack = [...arr];
+  const result = [];
+  
+  while (stack.length) {
+    const item = stack.pop();
+    
+    if (Array.isArray(item)) {
+      stack.push(...item); // Add array items back to stack
+    } else {
+      result.unshift(item); // Add to front to maintain order
+    }
+  }
+  
+  return result;
+}
+
+console.log(flattenIterative([1, [2, [3, [4]], 5], 6]));
+// Output: [1, 2, 3, 4, 5, 6]
+```
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(n)
+
+---
+
+#### 🌀 5️⃣ Using `toString()` and `split()` (Clever Trick)
+
+```javascript
+function flattenString(arr) {
+  return arr.toString().split(',').map(Number);
+}
+
+console.log(flattenString([1, [2, [3, [4]], 5], 6]));
+// Output: [1, 2, 3, 4, 5, 6]
+```
+
+**Note:** Only works with numbers. Not suitable for mixed types.
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(n)
+
+---
+
+#### 🎯 6️⃣ Flatten with Depth Control (Custom Implementation)
+
+```javascript
+function flattenWithDepth(arr, depth = 1) {
+  if (depth === 0) return arr;
+  
+  return arr.reduce((acc, item) => {
+    if (Array.isArray(item)) {
+      acc.push(...flattenWithDepth(item, depth - 1));
+    } else {
+      acc.push(item);
+    }
+    return acc;
+  }, []);
+}
+
+console.log(flattenWithDepth([1, [2, [3, [4]]]], 1));  // [1, 2, [3, [4]]]
+console.log(flattenWithDepth([1, [2, [3, [4]]]], 2));  // [1, 2, 3, [4]]
+console.log(flattenWithDepth([1, [2, [3, [4]]]], 3));  // [1, 2, 3, 4]
+```
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(d)
+
+---
+
+#### 🧩 7️⃣ Generator Function Approach (Advanced)
+
+```javascript
+function* flattenGenerator(arr) {
+  for (let item of arr) {
+    if (Array.isArray(item)) {
+      yield* flattenGenerator(item); // Delegate to nested generator
+    } else {
+      yield item;
+    }
+  }
+}
+
+const nested = [1, [2, [3, [4]], 5], 6];
+console.log([...flattenGenerator(nested)]);
+// Output: [1, 2, 3, 4, 5, 6]
+```
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(d)
+
+---
+
+#### 📊 Comparison Table
+
+| Approach | Pros | Cons | Best Use Case |
+|----------|------|------|---------------|
+| **`flat()`** | Simple, built-in | ES2019+ only | Production code |
+| **Recursive** | Easy to understand | Call stack limit | Interviews |
+| **`reduce()`** | Functional style | Less readable | FP enthusiasts |
+| **Iterative** | No recursion limit | Complex logic | Deep nesting |
+| **`toString()`** | Very short | Numbers only | Quick hacks |
+| **Generator** | Memory efficient | Advanced syntax | Lazy evaluation |
+
+---
+
+#### 🎓 Interview Tips
+
+**Common Follow-up Questions:**
+1. **Q:** How would you handle circular references?  
+   **A:** Track visited arrays using a WeakSet
+   
+2. **Q:** Can you optimize for very deep nesting?  
+   **A:** Use iterative approach to avoid stack overflow
+
+3. **Q:** How to flatten only specific depth?  
+   **A:** Add depth parameter and decrement on each recursion
+
+**Example with Circular Reference Protection:**
+
+```javascript
+function flattenSafe(arr, seen = new WeakSet()) {
+  const result = [];
+  
+  for (let item of arr) {
+    if (Array.isArray(item)) {
+      if (seen.has(item)) continue; // Skip circular reference
+      seen.add(item);
+      result.push(...flattenSafe(item, seen));
+    } else {
+      result.push(item);
+    }
+  }
+  
+  return result;
+}
+
+// Test with circular reference
+const circular = [1, 2];
+circular.push(circular); // Creates circular reference
+console.log(flattenSafe(circular)); // [1, 2] (avoids infinite loop)
+```
+
+---
+
+#### ✅ Test Cases
+
+```javascript
+// Test different scenarios
+console.log(flattenRecursive([]));                           // []
+console.log(flattenRecursive([1, 2, 3]));                   // [1, 2, 3]
+console.log(flattenRecursive([1, [2, 3]]));                 // [1, 2, 3]
+console.log(flattenRecursive([1, [2, [3, [4]]]]));          // [1, 2, 3, 4]
+console.log(flattenRecursive([[[[1]]]]));                   // [1]
+console.log(flattenRecursive([1, [], 2, [3], [[4]]]));     // [1, 2, 3, 4]
+```
 
 ---
 

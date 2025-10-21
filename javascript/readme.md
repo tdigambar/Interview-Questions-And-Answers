@@ -359,6 +359,182 @@ async function fetchData() {
 }
 ```
 
+### 11b. What are handled and unhandled exceptions in promises?
+
+**Handled Exceptions**: Errors caught using `.catch()` or `try-catch` blocks.
+
+**Unhandled Exceptions**: Promise rejections not caught, causing potential crashes.
+
+---
+
+#### 1. Handled Promise Exceptions
+
+**Using `.catch()`**
+```javascript
+// ✅ HANDLED
+fetch("/api/data")
+    .then(response => response.json())
+    .catch(error => console.error("Error:", error.message));
+```
+
+**Using `async/await` with `try-catch`**
+```javascript
+// ✅ HANDLED
+async function getData() {
+    try {
+        const data = await fetch("/api/data");
+        return data;
+    } catch (error) {
+        console.error("Error:", error);
+        return null;
+    }
+}
+```
+
+**Using `Promise.allSettled()`**
+```javascript
+// ✅ HANDLED - All promises complete regardless of failures
+const results = await Promise.allSettled([
+    fetch("/api/users"),
+    fetch("/api/posts")
+]);
+
+results.forEach(result => {
+    if (result.status === 'fulfilled') {
+        console.log("Success:", result.value);
+    } else {
+        console.error("Failed:", result.reason);
+    }
+});
+```
+
+---
+
+#### 2. Unhandled Promise Exceptions
+
+**Missing `.catch()`**
+```javascript
+// ❌ UNHANDLED
+fetch("/api/data")
+    .then(response => response.json());
+// No .catch() - unhandled rejection!
+```
+
+**Async without `try-catch`**
+```javascript
+// ❌ UNHANDLED
+async function getData() {
+    const data = await fetch("/api/data"); // If fails, error unhandled
+    return data;
+}
+```
+
+**Promise.all without error handling**
+```javascript
+// ❌ UNHANDLED
+Promise.all([promise1, promise2])
+    .then(results => console.log(results));
+// No .catch() - if any rejects, unhandled!
+```
+
+---
+
+#### 3. Global Error Handlers
+
+**Node.js**
+```javascript
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('🚨 Unhandled Rejection:', reason);
+    process.exit(1);
+});
+```
+
+**Browser**
+```javascript
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('🚨 Unhandled rejection:', event.reason);
+    event.preventDefault();
+});
+```
+
+---
+
+#### 4. Practical Comparison
+
+```javascript
+// ❌ BAD
+async function fetchUser() {
+    const response = await fetch("/api/user");
+    return await response.json();
+}
+
+// ✅ GOOD
+async function fetchUserSafe() {
+    try {
+        const response = await fetch("/api/user");
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+    } catch (error) {
+        console.error("Failed:", error);
+        return null;
+    }
+}
+```
+
+---
+
+#### 5. Error Handling Patterns
+
+**Centralized Error Handler**
+```javascript
+function handleError(error, context = "") {
+    console.error(`[${context}]`, error.message);
+    return { success: false, error: "An error occurred" };
+}
+
+async function fetchData(url) {
+    try {
+        const response = await fetch(url);
+        return await response.json();
+    } catch (error) {
+        return handleError(error, "fetchData");
+    }
+}
+```
+
+**Retry Logic**
+```javascript
+async function fetchWithRetry(url, retries = 3) {
+    for (let i = 1; i <= retries; i++) {
+        try {
+            return await fetch(url).then(r => r.json());
+        } catch (error) {
+            if (i === retries) throw error;
+            await new Promise(r => setTimeout(r, 1000 * i));
+        }
+    }
+}
+```
+
+---
+
+#### Summary Table
+
+| Type | Method | Handled? |
+|------|--------|----------|
+| Promise with `.catch()` | `promise.then().catch()` | ✅ Yes |
+| Promise without `.catch()` | `promise.then()` | ❌ No |
+| Async with `try-catch` | `try { await fetch() } catch {}` | ✅ Yes |
+| Async without `try-catch` | `await fetch()` | ❌ No |
+| Global handler | `process.on('unhandledRejection')` | ✅ Yes |
+
+**Best Practices:**
+- Always use `.catch()` or `try-catch`
+- Add global error handlers
+- Use `Promise.allSettled()` for parallel operations
+- Log errors with context
+- Return fallback values when appropriate
+
 ### 12. What is the difference between synchronous and asynchronous JavaScript?
 
 **Synchronous**: Code executes line by line, blocking until each operation completes.

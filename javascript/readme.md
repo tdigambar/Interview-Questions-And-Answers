@@ -1276,6 +1276,214 @@ try {
 - XSS attacks can access storage (never store sensitive data in plain text)
 - Check availability: `typeof(Storage) !== "undefined"`
 
+### 33. How do you prevent SQL Injection and XSS attacks in web applications?
+
+Security is crucial in web development. Two of the most common attacks are SQL Injection (backend) and Cross-Site Scripting/XSS (frontend). Here's how to prevent them:
+
+---
+
+#### SQL Injection Attack
+
+SQL Injection occurs when attackers insert malicious SQL code through user input to manipulate or access the database.
+
+**Vulnerable Code (❌ Never do this)**:
+```javascript
+// BAD: Direct string concatenation
+const userId = req.body.userId; // User input: "1 OR 1=1"
+const query = `SELECT * FROM users WHERE id = ${userId}`;
+db.query(query); // Executes: SELECT * FROM users WHERE id = 1 OR 1=1
+// Returns all users instead of one!
+```
+
+**Prevention Methods**:
+
+```javascript
+// ✅ Method 1: Parameterized Queries (Best Practice)
+const query = 'SELECT * FROM users WHERE id = ?';
+db.query(query, [userId]); // Values are escaped automatically
+
+// ✅ Method 2: Prepared Statements
+const query = 'SELECT * FROM users WHERE email = ? AND status = ?';
+db.execute(query, [email, status]);
+
+// ✅ Method 3: ORM Libraries (Sequelize, Prisma, TypeORM)
+const user = await User.findOne({ where: { id: userId } });
+
+// ✅ Method 4: Input Validation
+function validateUserId(id) {
+    const numId = parseInt(id, 10);
+    if (isNaN(numId) || numId <= 0) {
+        throw new Error('Invalid user ID');
+    }
+    return numId;
+}
+const safeId = validateUserId(req.body.userId);
+```
+
+---
+
+#### Cross-Site Scripting (XSS) Attack
+
+XSS occurs when attackers inject malicious JavaScript code into web pages that executes in other users' browsers.
+
+**Types of XSS**:
+1. **Stored XSS**: Malicious script stored in database
+2. **Reflected XSS**: Script reflected from URL/input
+3. **DOM-based XSS**: Script manipulates DOM directly
+
+**Vulnerable Code (❌ Never do this)**:
+```javascript
+// BAD: Directly inserting user input
+const username = "<script>alert('XSS')</script>";
+document.getElementById('welcome').innerHTML = `Welcome ${username}`;
+// Script executes!
+
+// BAD: Using eval with user input
+const userCode = req.query.code;
+eval(userCode); // Never use eval with user input!
+
+// BAD: Unescaped template rendering
+const comment = req.body.comment; // "<img src=x onerror='alert(1)'>"
+res.send(`<div>${comment}</div>`); // XSS vulnerability
+```
+
+**Prevention Methods**:
+
+```javascript
+// ✅ Method 1: Use textContent instead of innerHTML
+const username = "<script>alert('XSS')</script>";
+document.getElementById('welcome').textContent = `Welcome ${username}`;
+// Displays as plain text, doesn't execute
+
+// ✅ Method 2: Escape HTML characters
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+const safeUsername = escapeHtml(username);
+element.innerHTML = `Welcome ${safeUsername}`;
+
+// ✅ Method 3: Content Security Policy (CSP) Headers
+// In your server (Express.js example)
+app.use((req, res, next) => {
+    res.setHeader(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+    );
+    next();
+});
+
+// ✅ Method 4: Sanitize user input (DOMPurify library)
+import DOMPurify from 'dompurify';
+const dirty = "<img src=x onerror='alert(1)'>";
+const clean = DOMPurify.sanitize(dirty);
+element.innerHTML = clean; // Safe to use
+
+// ✅ Method 5: React automatically escapes (when using JSX)
+function Welcome({ username }) {
+    return <div>Welcome {username}</div>; // Auto-escaped
+}
+// But be careful with dangerouslySetInnerHTML!
+
+// ✅ Method 6: Validate and sanitize input on backend
+const validator = require('validator');
+
+function sanitizeInput(input) {
+    // Remove HTML tags
+    let clean = input.replace(/<[^>]*>/g, '');
+    // Trim whitespace
+    clean = clean.trim();
+    // Escape special characters
+    clean = validator.escape(clean);
+    return clean;
+}
+
+// ✅ Method 7: Use HTTP-only cookies for sensitive data
+res.cookie('sessionId', token, {
+    httpOnly: true,  // Prevents JavaScript access
+    secure: true,    // HTTPS only
+    sameSite: 'strict' // CSRF protection
+});
+```
+
+---
+
+#### Additional Security Best Practices
+
+```javascript
+// 1. Input Validation
+function validateEmail(email) {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+}
+
+// 2. Rate Limiting (prevents brute force)
+const rateLimit = require('express-rate-limit');
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per windowMs
+});
+app.use('/api/', limiter);
+
+// 3. CORS Configuration
+const cors = require('cors');
+app.use(cors({
+    origin: 'https://yourdomain.com',
+    credentials: true
+}));
+
+// 4. Helmet.js (sets security headers)
+const helmet = require('helmet');
+app.use(helmet());
+
+// 5. Password Hashing
+const bcrypt = require('bcrypt');
+const hashedPassword = await bcrypt.hash(password, 10);
+
+// 6. JWT Token Validation
+const jwt = require('jsonwebtoken');
+function verifyToken(token) {
+    try {
+        return jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+        throw new Error('Invalid token');
+    }
+}
+
+// 7. Environment Variables (never hardcode secrets)
+// Use .env file
+require('dotenv').config();
+const dbPassword = process.env.DB_PASSWORD;
+```
+
+---
+
+#### Security Checklist
+
+**Frontend**:
+- ✅ Escape all user input before rendering
+- ✅ Use `textContent` instead of `innerHTML` when possible
+- ✅ Implement Content Security Policy (CSP)
+- ✅ Use DOMPurify for sanitizing HTML
+- ✅ Avoid `eval()`, `Function()`, `setTimeout(string)` with user input
+- ✅ Validate input on client side (but always validate on server too)
+
+**Backend**:
+- ✅ Use parameterized queries or ORMs
+- ✅ Validate and sanitize all user input
+- ✅ Implement rate limiting
+- ✅ Use HTTPS everywhere
+- ✅ Set security headers (Helmet.js)
+- ✅ Use HTTP-only and Secure flags for cookies
+- ✅ Hash passwords (never store plain text)
+- ✅ Keep dependencies updated
+- ✅ Implement proper authentication and authorization
+- ✅ Log security events for monitoring
+
 ---
 
 ## Conclusion
@@ -1290,3 +1498,4 @@ Key areas covered include:
 - **Performance**: Engine optimization, memory management
 - **Modern Patterns**: Web Workers, async iterators, tagged templates
 - **Browser Storage**: Cookies, localStorage, sessionStorage, and web storage APIs
+- **Security**: SQL Injection prevention, XSS protection, and security best practices

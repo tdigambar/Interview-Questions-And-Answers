@@ -535,7 +535,115 @@ async function fetchWithRetry(url, retries = 3) {
 - Log errors with context
 - Return fallback values when appropriate
 
-### 12. What is the difference between synchronous and asynchronous JavaScript?
+### 12. What is event bubbling and how do you stop it?
+
+**Event Bubbling** is the process where an event starts from the target element and propagates up through its ancestors in the DOM tree.
+
+**Event Propagation Order:**
+1. **Capturing Phase** - Window → Document → Parent → Target (rarely used)
+2. **Target Phase** - Event reaches the target element
+3. **Bubbling Phase** - Target → Parent → Document → Window (default)
+
+---
+
+#### Example: Event Bubbling
+
+```javascript
+// HTML: <div id="parent"><button id="child">Click Me</button></div>
+
+const parent = document.getElementById('parent');
+const child = document.getElementById('child');
+
+parent.addEventListener('click', () => {
+  console.log('Parent clicked');
+});
+
+child.addEventListener('click', () => {
+  console.log('Child clicked');
+});
+
+// When you click the button:
+// Output:
+// "Child clicked"    ← Target phase
+// "Parent clicked"   ← Bubbling phase (event bubbles up)
+```
+
+---
+
+#### How to Stop Event Bubbling
+
+**1. `stopPropagation()` - Stops bubbling to parent**
+
+```javascript
+child.addEventListener('click', (event) => {
+  event.stopPropagation(); // ✅ Stops bubbling
+  console.log('Child clicked');
+});
+
+// Output: "Child clicked" (parent handler won't run)
+```
+
+**2. `preventDefault()` - Prevents default action (not bubbling)**
+
+```javascript
+// Prevents form submission but doesn't stop bubbling
+form.addEventListener('submit', (event) => {
+  event.preventDefault();
+  console.log('Form not submitted');
+});
+```
+
+---
+
+#### Practical Example: Modal Close
+
+```javascript
+const overlay = document.getElementById('overlay');
+const modalContent = document.querySelector('.modal-content');
+
+// Close modal when clicking overlay
+overlay.addEventListener('click', () => {
+  modal.style.display = 'none';
+});
+
+// Prevent closing when clicking modal content
+modalContent.addEventListener('click', (event) => {
+  event.stopPropagation(); // Don't bubble to overlay
+});
+```
+
+---
+
+#### Comparison Table
+
+| Method | Purpose | Example Use Case |
+|--------|---------|------------------|
+| `stopPropagation()` | Stops event bubbling | Modal content, dropdown menu |
+| `preventDefault()` | Prevents default action | Form submit, link navigation |
+| `stopImmediatePropagation()` | Stops all handlers | Emergency stop of all events |
+
+---
+
+#### Event Delegation (Using Bubbling)
+
+```javascript
+// ✅ GOOD - Single listener on parent (better performance)
+const list = document.querySelector('.list');
+list.addEventListener('click', (event) => {
+  if (event.target.classList.contains('list-item')) {
+    console.log('Item clicked:', event.target.textContent);
+  }
+});
+
+// Benefits: Works with dynamically added elements, better performance
+```
+
+**Key Points:**
+- `event.target` - Element that triggered the event
+- `event.currentTarget` - Element with the event listener
+- Most events bubble (click, keydown, submit) except focus, blur, load
+
+### 13. What is the difference between synchronous and asynchronous JavaScript?
 
 **Synchronous**: Code executes line by line, blocking until each operation completes.
 

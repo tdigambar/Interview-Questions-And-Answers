@@ -1351,7 +1351,93 @@ setInterval(() => {
 
 ## Security
 
-### 18. What are common security vulnerabilities in Node.js applications?
+### 18. What is CORS and how do you handle it in Node.js?
+
+**Answer:**
+
+**CORS (Cross-Origin Resource Sharing)** is a security mechanism that restricts web pages from making requests to a different domain than the one serving the page.
+
+**Common CORS Error:**
+```
+Access to fetch at 'http://api.example.com' from origin 'http://localhost:3000' 
+has been blocked by CORS policy
+```
+
+---
+
+#### Handling CORS in Node.js
+
+**Method 1: Using `cors` Package (Recommended)**
+
+```bash
+npm install cors
+```
+
+```javascript
+const express = require('express');
+const cors = require('cors');
+const app = express();
+
+// Enable CORS for all routes
+app.use(cors());
+
+// Or configure specific origins
+const corsOptions = {
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true // Allow cookies
+};
+app.use(cors(corsOptions));
+
+// Route-specific CORS
+app.get('/api/public', cors(), (req, res) => {
+  res.json({ message: 'Public API' });
+});
+```
+
+**Method 2: Manual Headers**
+
+```javascript
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
+```
+
+**Production Configuration:**
+
+```javascript
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? ['https://example.com']
+  : ['http://localhost:3000'];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+```
+
+**Key Points:**
+- Use `cors` package for simplicity
+- Never use `*` (wildcard) in production
+- Enable `credentials: true` only for trusted origins
+- CORS handles preflight OPTIONS requests automatically
+
+### 19. What are common security vulnerabilities in Node.js applications?
 
 **Answer:**
 Common security issues and their solutions:
@@ -1417,7 +1503,7 @@ https.createServer(options, app).listen(443);
 
 ## Testing
 
-### 19. How do you test Node.js applications?
+### 20. How do you test Node.js applications?
 
 **Answer:**
 Testing strategies for Node.js applications:
@@ -1494,7 +1580,7 @@ describe('File operations', () => {
 
 ## Advanced Topics
 
-### 20. What are the differences between child_process, cluster, and worker_threads?
+### 21. What are the differences between child_process, cluster, and worker_threads?
 
 **Answer:**
 
@@ -1560,7 +1646,7 @@ if (isMainThread) {
 }
 ```
 
-### 21. How do you implement caching in Node.js?
+### 22. How do you implement caching in Node.js?
 
 **Answer:**
 Several caching strategies for Node.js applications:
@@ -1638,7 +1724,7 @@ async function getCachedData(key) {
 }
 ```
 
-### 22. How do you handle database connections in Node.js?
+### 23. How do you handle database connections in Node.js?
 
 **Answer:**
 Database connection management strategies:

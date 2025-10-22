@@ -1014,7 +1014,246 @@ function debounceLeading(func, delay) {
 - Both improve performance by reducing function calls
 - Choose based on whether you need final result or continuous updates
 
-### 14. What is the difference between synchronous and asynchronous JavaScript?
+### 14. What is prototypal inheritance in JavaScript?
+
+**Prototypal Inheritance** is JavaScript's way of allowing objects to inherit properties and methods from other objects through the prototype chain.
+
+**Key Concept:** Every object has a hidden `[[Prototype]]` property that links to another object.
+
+---
+
+#### The Prototype Chain
+
+```javascript
+const animal = {
+  eats: true,
+  walk() {
+    console.log('Animal walks');
+  }
+};
+
+const rabbit = {
+  jumps: true
+};
+
+// Set animal as prototype of rabbit
+rabbit.__proto__ = animal; // or Object.setPrototypeOf(rabbit, animal)
+
+console.log(rabbit.eats);  // true (inherited from animal)
+console.log(rabbit.jumps); // true (own property)
+rabbit.walk();             // "Animal walks" (inherited method)
+```
+
+**Prototype Chain Lookup:**
+```
+rabbit.eats → rabbit object (not found)
+           → animal object (found: true)
+           → Object.prototype (if not found)
+           → null (end of chain)
+```
+
+---
+
+#### Constructor Functions and Prototypes
+
+```javascript
+// Constructor function
+function Person(name, age) {
+  this.name = name;
+  this.age = age;
+}
+
+// Add method to prototype (shared by all instances)
+Person.prototype.greet = function() {
+  return `Hello, I'm ${this.name}`;
+};
+
+// Create instances
+const john = new Person('John', 30);
+const jane = new Person('Jane', 25);
+
+console.log(john.greet()); // "Hello, I'm John"
+console.log(jane.greet()); // "Hello, I'm Jane"
+
+// Both instances share the same greet method
+console.log(john.greet === jane.greet); // true
+```
+
+---
+
+#### ES6 Classes (Syntactic Sugar)
+
+```javascript
+// Class syntax (under the hood, still uses prototypes)
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+  
+  speak() {
+    console.log(`${this.name} makes a sound`);
+  }
+}
+
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name); // Call parent constructor
+    this.breed = breed;
+  }
+  
+  speak() {
+    console.log(`${this.name} barks`);
+  }
+}
+
+const dog = new Dog('Buddy', 'Golden Retriever');
+dog.speak(); // "Buddy barks"
+```
+
+---
+
+#### Prototype Methods
+
+**1. `Object.create()` - Create object with specific prototype**
+```javascript
+const animal = {
+  eats: true
+};
+
+const rabbit = Object.create(animal);
+rabbit.jumps = true;
+
+console.log(rabbit.eats);  // true (inherited)
+console.log(rabbit.jumps); // true (own property)
+```
+
+**2. Checking prototypes**
+```javascript
+// Check if object is prototype of another
+console.log(animal.isPrototypeOf(rabbit)); // true
+
+// Get prototype
+console.log(Object.getPrototypeOf(rabbit) === animal); // true
+
+// Check own property (not inherited)
+console.log(rabbit.hasOwnProperty('jumps')); // true
+console.log(rabbit.hasOwnProperty('eats'));  // false
+```
+
+---
+
+#### Inheritance Example
+
+```javascript
+// Parent constructor
+function Vehicle(brand) {
+  this.brand = brand;
+}
+
+Vehicle.prototype.start = function() {
+  console.log(`${this.brand} is starting`);
+};
+
+// Child constructor
+function Car(brand, model) {
+  Vehicle.call(this, brand); // Call parent constructor
+  this.model = model;
+}
+
+// Set up inheritance
+Car.prototype = Object.create(Vehicle.prototype);
+Car.prototype.constructor = Car;
+
+// Add child-specific method
+Car.prototype.drive = function() {
+  console.log(`${this.brand} ${this.model} is driving`);
+};
+
+const myCar = new Car('Toyota', 'Camry');
+myCar.start(); // "Toyota is starting" (inherited)
+myCar.drive(); // "Toyota Camry is driving" (own method)
+```
+
+---
+
+#### Comparison: Prototypal vs Classical Inheritance
+
+| Feature | JavaScript (Prototypal) | Classical (Java, C++) |
+|---------|------------------------|----------------------|
+| **Inheritance** | Objects inherit from objects | Classes inherit from classes |
+| **Syntax** | Prototype chain | Class-based |
+| **Flexibility** | Dynamic, runtime changes | Static, compile-time |
+| **Memory** | Methods shared via prototype | Methods copied to instances |
+
+---
+
+#### Common Pitfalls
+
+**1. Modifying built-in prototypes (BAD PRACTICE)**
+```javascript
+// ❌ Don't do this
+Array.prototype.myMethod = function() {
+  // Can break existing code
+};
+
+// ✅ Create your own class instead
+class MyArray extends Array {
+  myMethod() {
+    // Safe custom method
+  }
+}
+```
+
+**2. Losing constructor reference**
+```javascript
+// ❌ Wrong
+Child.prototype = Parent.prototype; // Both point to same object
+
+// ✅ Correct
+Child.prototype = Object.create(Parent.prototype);
+Child.prototype.constructor = Child;
+```
+
+---
+
+#### Real-World Example
+
+```javascript
+// Shape (parent)
+function Shape(color) {
+  this.color = color;
+}
+
+Shape.prototype.getColor = function() {
+  return this.color;
+};
+
+// Circle (child)
+function Circle(color, radius) {
+  Shape.call(this, color);
+  this.radius = radius;
+}
+
+Circle.prototype = Object.create(Shape.prototype);
+Circle.prototype.constructor = Circle;
+
+Circle.prototype.getArea = function() {
+  return Math.PI * this.radius ** 2;
+};
+
+const circle = new Circle('red', 5);
+console.log(circle.getColor()); // "red" (inherited)
+console.log(circle.getArea());  // 78.54 (own method)
+```
+
+**Key Takeaways:**
+- **Every object has a prototype** (except `Object.prototype`)
+- **Inheritance via prototype chain** - properties/methods lookup
+- **Constructor functions** use `prototype` property to share methods
+- **ES6 classes** are syntactic sugar over prototypes
+- **Use `Object.create()`** for clean prototypal inheritance
+
+### 15. What is the difference between synchronous and asynchronous JavaScript?
 
 **Synchronous**: Code executes line by line, blocking until each operation completes.
 

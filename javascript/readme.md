@@ -318,46 +318,239 @@ console.log(counter.getCount());  // 2
 
 ## Intermediate Level
 
-### 11. What are promises in JavaScript?
+### 11. What are promises and async/await in JavaScript?
 
-Promises are objects that represent the eventual completion or failure of an asynchronous operation.
+**Promise** is an object representing the eventual completion or failure of an asynchronous operation.
+
+**Promise States:**
+1. **Pending** - Initial state
+2. **Fulfilled** - Operation completed successfully
+3. **Rejected** - Operation failed
+
+---
+
+#### Creating a Promise
 
 ```javascript
-// Creating a promise
 const myPromise = new Promise((resolve, reject) => {
     const success = true;
     
     if (success) {
-        resolve("Operation successful");
+        resolve("Operation successful"); // Fulfilled
     } else {
-        reject("Operation failed");
+        reject("Operation failed"); // Rejected
     }
 });
+```
 
-// Using promises
-myPromise
-    .then(result => console.log(result))
-    .catch(error => console.error(error))
-    .finally(() => console.log("Promise completed"));
+---
 
-// Promise methods
-Promise.all([promise1, promise2, promise3])
-    .then(results => console.log("All promises resolved:", results))
-    .catch(error => console.error("One promise rejected:", error));
+#### Using Promises - `.then()` / `.catch()`
 
-Promise.race([promise1, promise2])
-    .then(result => console.log("First promise resolved:", result));
+```javascript
+// Chaining promises
+fetch('https://api.example.com/users')
+    .then(response => response.json())
+    .then(data => {
+        console.log('Users:', data);
+        return fetch(`https://api.example.com/posts`);
+    })
+    .then(response => response.json())
+    .then(posts => console.log('Posts:', posts))
+    .catch(error => console.error('Error:', error))
+    .finally(() => console.log('Request completed'));
+```
 
-// Async/await (ES2017)
-async function fetchData() {
+---
+
+#### Async/Await (Modern Approach)
+
+**Async/await** makes asynchronous code look and behave like synchronous code.
+
+```javascript
+// Async function returns a promise
+async function fetchUserData() {
     try {
-        const result = await myPromise;
-        console.log(result);
+        const response = await fetch('https://api.example.com/users');
+        const data = await response.json();
+        console.log('Users:', data);
+        return data;
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+// Usage
+fetchUserData();
+```
+
+---
+
+#### Promise Methods
+
+**1. `Promise.all()` - Wait for all to complete**
+```javascript
+const promises = [
+    fetch('/api/users'),
+    fetch('/api/posts'),
+    fetch('/api/comments')
+];
+
+Promise.all(promises)
+    .then(responses => Promise.all(responses.map(r => r.json())))
+    .then(data => console.log(data))
+    .catch(error => console.error('One failed:', error));
+
+// ⚠️ If ANY promise rejects, entire Promise.all rejects
+```
+
+**2. `Promise.allSettled()` - Wait for all, get all results**
+```javascript
+Promise.allSettled(promises)
+    .then(results => {
+        results.forEach(result => {
+            if (result.status === 'fulfilled') {
+                console.log('Success:', result.value);
+            } else {
+                console.log('Failed:', result.reason);
+            }
+        });
+    });
+
+// ✅ Always resolves, never rejects
+```
+
+**3. `Promise.race()` - First to complete wins**
+```javascript
+Promise.race([
+    fetch('/api/fast'),
+    fetch('/api/slow')
+])
+    .then(response => console.log('First response:', response));
+
+// Returns first promise to resolve/reject
+```
+
+**4. `Promise.any()` - First to succeed wins**
+```javascript
+Promise.any([
+    fetch('/api/server1'),
+    fetch('/api/server2'),
+    fetch('/api/server3')
+])
+    .then(response => console.log('First success:', response))
+    .catch(error => console.error('All failed:', error));
+
+// Returns first fulfilled promise, ignores rejections
+```
+
+---
+
+#### Comparison: Promises vs Async/Await
+
+```javascript
+// Using Promises (.then)
+function getUserPosts() {
+    return fetch('/api/user/1')
+        .then(response => response.json())
+        .then(user => fetch(`/api/users/${user.id}/posts`))
+        .then(response => response.json())
+        .then(posts => console.log(posts))
+        .catch(error => console.error(error));
+}
+
+// Using Async/Await (cleaner)
+async function getUserPosts() {
+    try {
+        const userResponse = await fetch('/api/user/1');
+        const user = await userResponse.json();
+        
+        const postsResponse = await fetch(`/api/users/${user.id}/posts`);
+        const posts = await postsResponse.json();
+        
+        console.log(posts);
     } catch (error) {
         console.error(error);
     }
 }
 ```
+
+---
+
+#### Real-World Example: Parallel Requests
+
+```javascript
+// ❌ Sequential (slow) - 6 seconds total
+async function fetchSequential() {
+    const user = await fetch('/api/user'); // 2s
+    const posts = await fetch('/api/posts'); // 2s
+    const comments = await fetch('/api/comments'); // 2s
+}
+
+// ✅ Parallel (fast) - 2 seconds total
+async function fetchParallel() {
+    const [user, posts, comments] = await Promise.all([
+        fetch('/api/user'),
+        fetch('/api/posts'),
+        fetch('/api/comments')
+    ]);
+}
+```
+
+---
+
+#### Key Differences
+
+| Feature | Promises | Async/Await |
+|---------|----------|-------------|
+| **Syntax** | `.then()` chains | `await` keyword |
+| **Readability** | Can be complex | Cleaner, linear |
+| **Error handling** | `.catch()` | `try-catch` |
+| **Debugging** | Harder | Easier |
+| **Return value** | Promise | Promise (implicit) |
+
+---
+
+#### Important Notes
+
+**1. `await` only works inside `async` functions**
+```javascript
+// ❌ Error
+function getData() {
+    const data = await fetch('/api'); // SyntaxError
+}
+
+// ✅ Correct
+async function getData() {
+    const data = await fetch('/api');
+}
+```
+
+**2. Async functions always return a promise**
+```javascript
+async function getValue() {
+    return 42; // Automatically wrapped in Promise.resolve(42)
+}
+
+getValue().then(value => console.log(value)); // 42
+```
+
+**3. Multiple awaits run sequentially**
+```javascript
+// Sequential (3 seconds)
+const a = await task1(); // 1s
+const b = await task2(); // 1s
+const c = await task3(); // 1s
+
+// Parallel (1 second)
+const [a, b, c] = await Promise.all([task1(), task2(), task3()]);
+```
+
+**Key Takeaways:**
+- **Promises** - Handle async operations with `.then()/.catch()`
+- **Async/Await** - Syntactic sugar making promises easier to read
+- **Use `Promise.all()`** for parallel operations
+- **Use `try-catch`** with async/await for error handling
 
 ### 11b. What are handled and unhandled exceptions in promises?
 

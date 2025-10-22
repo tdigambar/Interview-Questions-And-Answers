@@ -643,7 +643,185 @@ list.addEventListener('click', (event) => {
 - `event.currentTarget` - Element with the event listener
 - Most events bubble (click, keydown, submit) except focus, blur, load
 
-### 13. What is the difference between synchronous and asynchronous JavaScript?
+### 13. What is debouncing and throttling?
+
+Both are techniques to control how often a function executes, especially for performance optimization with events like scrolling, resizing, or typing.
+
+---
+
+#### Debouncing
+
+**Definition:** Delays function execution until after a specified time has passed since the last event.
+
+**When to use:** Search input, form validation, window resize
+
+**How it works:**
+- Wait for user to stop typing/acting
+- Execute function only after delay period
+- Each new event resets the timer
+
+```javascript
+function debounce(func, delay) {
+  let timeoutId;
+  
+  return function(...args) {
+    clearTimeout(timeoutId); // Clear previous timer
+    timeoutId = setTimeout(() => {
+      func.apply(this, args);
+    }, delay);
+  };
+}
+
+// Usage: Search input
+const searchInput = document.getElementById('search');
+const search = debounce((query) => {
+  console.log('Searching for:', query);
+  // Make API call
+}, 500);
+
+searchInput.addEventListener('input', (e) => search(e.target.value));
+
+// User types "hello" → Only 1 API call after 500ms of inactivity
+```
+
+---
+
+#### Throttling
+
+**Definition:** Limits function execution to once per specified time period.
+
+**When to use:** Scroll events, button clicks, window resize
+
+**How it works:**
+- Execute immediately on first call
+- Ignore subsequent calls until time period passes
+- Execute at regular intervals during continuous events
+
+```javascript
+function throttle(func, limit) {
+  let inThrottle;
+  
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+}
+
+// Usage: Scroll event
+const handleScroll = throttle(() => {
+  console.log('Scrolled at:', Date.now());
+  // Update scroll position, load more content
+}, 1000);
+
+window.addEventListener('scroll', handleScroll);
+
+// Executes maximum once per second while scrolling
+```
+
+---
+
+#### Comparison
+
+**Visual Representation:**
+
+```
+User Actions:  ||||||||||||||||||||
+               ↓
+
+Debouncing:    ------------------- X  (waits until end)
+               
+Throttling:    X-----X-----X-----X    (regular intervals)
+```
+
+| Feature | Debouncing | Throttling |
+|---------|-----------|------------|
+| **Execution** | After delay ends | At regular intervals |
+| **Best for** | Search, form validation | Scroll, resize, button clicks |
+| **Guarantees** | Last call executes | Consistent execution rate |
+| **Example** | Wait 500ms after typing stops | Execute once per second while scrolling |
+
+---
+
+#### Real-World Examples
+
+**Debouncing - Search Autocomplete**
+```javascript
+const searchAPI = debounce((query) => {
+  fetch(`/api/search?q=${query}`)
+    .then(res => res.json())
+    .then(results => displayResults(results));
+}, 300);
+
+// User types: "j" "a" "v" "a"
+// API called only once after 300ms of no typing
+```
+
+**Throttling - Infinite Scroll**
+```javascript
+const loadMore = throttle(() => {
+  const scrollPosition = window.scrollY + window.innerHeight;
+  const threshold = document.body.offsetHeight - 500;
+  
+  if (scrollPosition > threshold) {
+    fetchMoreItems();
+  }
+}, 500);
+
+window.addEventListener('scroll', loadMore);
+
+// Checks scroll position maximum once every 500ms
+```
+
+---
+
+#### When to Use Which?
+
+**Use Debouncing when:**
+- ✅ You want to wait for user to finish an action
+- ✅ Only the final result matters
+- ✅ Examples: Search input, form validation, auto-save
+
+**Use Throttling when:**
+- ✅ You want regular updates during continuous action
+- ✅ Intermediate results matter
+- ✅ Examples: Scroll position tracking, mouse movement, resize events
+
+---
+
+#### Advanced: Leading vs Trailing
+
+```javascript
+// Trailing debounce (default) - executes after delay
+function debounceTrailing(func, delay) {
+  let timeoutId;
+  return function(...args) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(this, args), delay);
+  };
+}
+
+// Leading debounce - executes immediately, then waits
+function debounceLeading(func, delay) {
+  let timeoutId;
+  return function(...args) {
+    const callNow = !timeoutId;
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => timeoutId = null, delay);
+    if (callNow) func.apply(this, args);
+  };
+}
+```
+
+**Key Takeaways:**
+- **Debouncing** = Wait until action stops
+- **Throttling** = Limit execution rate
+- Both improve performance by reducing function calls
+- Choose based on whether you need final result or continuous updates
+
+### 14. What is the difference between synchronous and asynchronous JavaScript?
 
 **Synchronous**: Code executes line by line, blocking until each operation completes.
 

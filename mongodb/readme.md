@@ -60,7 +60,131 @@ MongoDB is a NoSQL document-oriented database that stores data in flexible, JSON
 }
 ```
 
-### 4. What is BSON?
+### 4. How does MongoDB store data?
+
+MongoDB stores data in **BSON (Binary JSON)** format on disk using collections and documents.
+
+**Storage Architecture:**
+
+```
+Database
+  └── Collection (like a table)
+       └── Document (like a row, stored as BSON)
+            └── Fields (key-value pairs)
+```
+
+**Physical Storage:**
+
+1. **BSON Format** - Documents stored in binary format
+2. **WiredTiger Storage Engine** (default) - Manages data on disk
+3. **Collections** - Organized into data files
+4. **Memory-Mapped Files** - Data cached in RAM for fast access
+
+**Storage Hierarchy:**
+```javascript
+// Logical structure
+{
+  "_id": ObjectId("507f1f77bcf86cd799439011"),
+  "name": "John Doe",
+  "email": "john@example.com",
+  "age": 30
+}
+
+// Physical storage:
+// Database → data/db/myapp/
+//   ├── collection-0-123.wt (WiredTiger file)
+//   ├── collection-2-123.wt
+//   └── index-1-123.wt (index files)
+```
+
+**Key Storage Features:**
+
+**1. Documents** - Stored in BSON format
+```javascript
+// Each document is a BSON object
+{
+  _id: ObjectId("..."),     // 12 bytes
+  name: "John",             // String + length
+  age: 30,                  // 4 bytes (int32)
+  active: true,             // 1 byte (boolean)
+  hobbies: ["coding"]       // Array in BSON
+}
+```
+
+**2. WiredTiger Storage Engine** - Compresses and manages data
+- **Document-level locking** - Multiple threads access different docs
+- **Compression** - Reduces disk space (snappy, zlib, zstd)
+- **Journaling** - Write-ahead log for durability
+- **Checkpoints** - Periodic snapshots for recovery
+
+**3. Memory Management**
+```javascript
+// WiredTiger cache configuration
+storage:
+  wiredTiger:
+    engineConfig:
+      cacheSizeGB: 1  // RAM allocated for caching
+```
+
+**Data File Organization:**
+```
+/data/db/
+  └── myapp/
+      ├── collection-0-xxx.wt   (users collection)
+      ├── collection-2-xxx.wt   (orders collection)
+      ├── index-1-xxx.wt        (users indexes)
+      ├── index-3-xxx.wt        (orders indexes)
+      └── WiredTiger.wt         (metadata)
+```
+
+**Document Size Limits:**
+- Maximum document size: **16 MB**
+- Use GridFS for files larger than 16MB
+- Each document stored contiguously in memory
+
+**Example - How a Document is Stored:**
+```javascript
+// Application code
+db.users.insertOne({
+  name: "Alice",
+  age: 25,
+  email: "alice@example.com"
+})
+
+// What happens:
+// 1. Document converted to BSON binary format
+// 2. Assigned unique ObjectId (_id)
+// 3. Written to WiredTiger cache (RAM)
+// 4. Journaled for durability
+// 5. Periodically flushed to disk (.wt files)
+// 6. Compressed using snappy/zlib
+```
+
+**Storage Efficiency:**
+```javascript
+// Check storage size
+db.users.stats()
+// Output:
+{
+  size: 1024,              // Logical size
+  storageSize: 512,        // Physical size (compressed)
+  totalIndexSize: 256,     // Index size
+  indexSizes: {
+    "_id_": 128,
+    "email_1": 128
+  }
+}
+```
+
+**Key Takeaways:**
+- Data stored as **BSON** (binary JSON) documents
+- **WiredTiger** storage engine manages physical storage
+- Documents organized in **collections** (data files)
+- **Compression** reduces disk usage
+- Data cached in **RAM** for fast access
+- **16MB limit** per document
+
+### 5. What is BSON?
 
 BSON (Binary JSON) is a binary-encoded serialization of JSON-like documents. It extends JSON with additional data types and is more efficient for storage and traversal.
 
@@ -71,7 +195,7 @@ BSON (Binary JSON) is a binary-encoded serialization of JSON-like documents. It 
 - Regular Expression, JavaScript Code
 - Min/Max Key, Timestamp
 
-### 5. What is ObjectId in MongoDB?
+### 6. What is ObjectId in MongoDB?
 
 ObjectId is a 12-byte identifier typically used as the primary key for documents. It consists of:
 
@@ -87,7 +211,7 @@ ObjectId("507f1f77bcf86cd799439011")
 // 439011 - counter
 ```
 
-### 6. How do you create a database and collection in MongoDB?
+### 7. How do you create a database and collection in MongoDB?
 
 ```javascript
 // Create/switch to database
@@ -107,7 +231,7 @@ db.createCollection("users", {
 })
 ```
 
-### 7. What are the basic CRUD operations in MongoDB?
+### 8. What are the basic CRUD operations in MongoDB?
 
 **Create (Insert):**
 ```javascript
@@ -173,7 +297,7 @@ db.users.deleteMany({age: {$lt: 18}})
 db.users.deleteMany({})
 ```
 
-### 8. What are MongoDB operators?
+### 9. What are MongoDB operators?
 
 MongoDB provides various operators for querying and updating documents:
 
@@ -215,7 +339,7 @@ db.users.updateOne(
 )
 ```
 
-### 9. What is indexing in MongoDB?
+### 10. What is indexing in MongoDB?
 
 Indexes are data structures that improve query performance by providing quick access to documents. MongoDB automatically creates an index on the `_id` field.
 
@@ -242,7 +366,7 @@ db.users.getIndexes()
 db.users.dropIndex({email: 1})
 ```
 
-### 10. What are the different types of indexes in MongoDB?
+### 11. What are the different types of indexes in MongoDB?
 
 **Single Field Index:**
 ```javascript
@@ -286,7 +410,7 @@ db.users.createIndex(
 
 ## Intermediate Level
 
-### 11. What is the Aggregation Framework?
+### 12. What is the Aggregation Framework?
 
 The Aggregation Framework is a powerful tool for data processing and analysis. It uses a pipeline of stages to transform documents.
 
@@ -311,7 +435,7 @@ db.orders.aggregate([
 ])
 ```
 
-### 12. What are the main aggregation stages?
+### 13. What are the main aggregation stages?
 
 **$match**: Filter documents (like WHERE in SQL)
 ```javascript
@@ -361,7 +485,7 @@ db.orders.aggregate([
 }}
 ```
 
-### 13. What is the difference between find() and aggregate()?
+### 14. What is the difference between find() and aggregate()?
 
 | find() | aggregate() |
 |--------|-------------|

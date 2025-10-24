@@ -253,16 +253,28 @@ Route 53 is AWS's scalable Domain Name System (DNS) web service designed to rout
 - Multi-value answer routing
 
 ### 23. What is CloudFront?
-CloudFront is a Content Delivery Network (CDN) service that securely delivers data, videos, applications, and APIs to customers globally with low latency.
 
-**Benefits:**
+AWS CloudFront is a global content delivery network (CDN) that caches content like web pages, videos, and images at edge locations closer to users, which speeds up delivery and improves performance. When a user requests content, CloudFront serves it from the nearest edge location. If the content isn't cached there, it fetches it from the origin (like an Amazon S3 bucket or web server), caches it, and then delivers it to the user.
 
-- Fast content delivery
-- DDoS protection
-- SSL/TLS encryption
-- Integration with AWS services
-- Real-time metrics
-- Edge locations worldwide
+**Key Features and Benefits:**
+
+- **Accelerated content delivery**: By storing copies of content in multiple data centers around the world, CloudFront significantly reduces latency and improves loading times for users.
+- **Global network**: It uses a worldwide network of data centers called "edge locations" to deliver content from the location that provides the lowest latency for each user.
+- **Content types**: It can deliver a wide range of content, including static and dynamic web content, large files, software updates, and live and on-demand video streaming.
+- **Scalability and reliability**: CloudFront automatically scales to handle high traffic volumes and provides data redundancy, which improves reliability.
+- **Integration with other AWS services**: It integrates seamlessly with other AWS services like Amazon S3 and AWS WAF for security.
+- **Programmable at the edge**: Through features like CloudFront Functions and AWS Lambda@Edge, you can run code at edge locations for tasks like URL rewrites, header manipulation, and more, with minimal latency.
+- **DDoS protection**: Built-in protection against distributed denial-of-service attacks.
+- **SSL/TLS encryption**: Secure content delivery with HTTPS support.
+- **Real-time metrics**: Monitor performance and usage patterns through CloudWatch.
+
+**How It Works:**
+
+1. A user requests content from a website or application.
+2. CloudFront routes the request to the edge location that is geographically closest to the user, providing the lowest latency.
+3. If the content is already stored in that edge location's cache, CloudFront delivers it to the user immediately.
+4. If the content is not in the cache, CloudFront retrieves the definitive version of the content from the origin server (e.g., an S3 bucket or an HTTP server), caches it at the edge location, and then delivers it to the user.
+5. Subsequent requests for the same content from users in that region will be served from the cache
 
 ### 24. What is Elastic Beanstalk?
 Elastic Beanstalk is a PaaS that makes it easy to deploy and scale web applications and services. You upload your code, and Elastic Beanstalk handles deployment, capacity provisioning, load balancing, and auto-scaling.

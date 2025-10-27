@@ -272,15 +272,22 @@ const person1 = new Person("Alice");
 const obj2 = {
     name: "Bob",
     greet: () => {
-        return `Hello, I'm ${this.name}`; // this refers to global object
+        // ❌ WRONG: Arrow function doesn't bind its own 'this'
+        // 'this' refers to global/window object, NOT obj2
+        return `Hello, I'm ${this.name}`; // undefined or global name
     },
     greet2: function() {
+        // ✅ CORRECT: Regular function binds 'this' to obj2
         const inner = () => {
-            return `Hello, I'm ${this.name}`; // this refers to obj2
+            // Arrow function inherits 'this' from greet2
+            return `Hello, I'm ${this.name}`; // this.name = "Bob"
         };
         return inner();
     }
 };
+
+console.log(obj2.greet());  // "Hello, I'm undefined" (or global name)
+console.log(obj2.greet2()); // "Hello, I'm Bob"
 ```
 
 ### 10. What are closures in JavaScript?

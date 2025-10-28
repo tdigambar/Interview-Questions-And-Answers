@@ -378,61 +378,472 @@ console.log('7. Sync End');
 ### 7. How do you handle blocking operations in Node.js?
 
 **Answer:**
-Node.js is single-threaded, so blocking operations can freeze the entire application.
 
-**Solutions:**
+Node.js runs on a single-threaded event loop. Blocking operations (CPU-intensive tasks or synchronous I/O) freeze the entire application, preventing it from handling other requests or events.
 
-**1. Use Worker Threads:**
+#### What are Blocking Operations?
+
+**Blocking operations include:**
+- Heavy computations (cryptography, image processing, data processing)
+- Synchronous file operations (`fs.readFileSync`, `fs.writeFileSync`)
+- Large loops without yielding control
+- JSON parsing of huge payloads
+- Complex regex operations on large strings
+- Synchronous database queries
+
+#### Why Blocking is Problematic
+
 ```javascript
-const { Worker, isMainThread, parentPort } = require('worker_threads');
-
-if (isMainThread) {
-  // Main thread
-  const worker = new Worker(__filename);
-  worker.postMessage({ num: 40 });
-  worker.on('message', (result) => {
-    console.log('Fibonacci result:', result);
-  });
-} else {
-  // Worker thread
-  parentPort.on('message', ({ num }) => {
-    const result = fibonacci(num);
-    parentPort.postMessage(result);
-  });
-  
-  function fibonacci(n) {
-    if (n < 2) return n;
-    return fibonacci(n - 1) + fibonacci(n - 2);
+// ❌ BAD: Blocks the event loop
+function calculatePrimes(max) {
+  const primes = [];
+  for (let i = 2; i < max; i++) {
+    let isPrime = true;
+    for (let j = 2; j < i; j++) {
+      if (i % j === 0) {
+        isPrime = false;
+        break;
+      }
+    }
+    if (isPrime) primes.push(i);
   }
+  return primes;
 }
+
+app.get('/primes', (req, res) => {
+  const primes = calculatePrimes(100000); // Blocks for seconds!
+  res.json(primes);
+});
+
+// During this calculation, ALL other requests are blocked!
 ```
 
-**2. Use setImmediate for CPU-intensive tasks:**
+---
+
+#### Solutions to Handle Blocking Operations
+
+#### **1. Use Asynchronous APIs**
+
+Always prefer async versions of Node.js APIs:
+
 ```javascript
-function processLargeArray(array, callback) {
-  let index = 0;
-  
-  function processChunk() {
-    const chunk = array.slice(index, index + 1000);
+// ❌ BAD: Synchronous (blocking)
+const data = fs.readFileSync('large-file.txt', 'utf8');
+console.log(data);
+
+// ✅ GOOD: Asynchronous (non-blocking)
+fs.readFile('large-file.txt', 'utf8', (err, data) => {
+  if (err) throw err;
+  console.log(data);
+});
+
+// ✅ BETTER: Using promises
+const data = await fs.promises.readFile('large-file.txt', 'utf8');
+console.log(data);
+```
+
+---
+
+#### **2. Use Worker Threads for CPU-Intensive Tasks**
+
+Worker threads allow you to run JavaScript code in parallel threads:
+
+```javascript
+// worker.js - Separate file for worker code
+const { parentPort } = require('worker_threads');
+
+parentPort.on('message', ({ num }) => {
+  const result = fibonacci(num);
+  parentPort.postMessage(result);
+});
+
+function fibonacci(n) {
+  if (n < 2) return n;
+  return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+// main.js - Main application file
+const { Worker } = require('worker_threads');
+
+function runWorker(workerData) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker('./worker.js');
     
-    // Process chunk
-    chunk.forEach(item => {
-      // CPU-intensive operation
-      Math.sqrt(item * item);
+    worker.on('message', resolve);
+    worker.on('error', reject);
+    worker.on('exit', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Worker stopped with exit code ${code}`));
+      }
     });
     
-    index += 1000;
+    worker.postMessage(workerData);
+  });
+}
+
+// Express route example
+app.get('/fibonacci/:num', async (req, res) => {
+  try {
+    const result = await runWorker({ num: parseInt(req.params.num) });
+    res.json({ result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+```
+
+**Worker Thread Pool Example:**
+
+```javascript
+const { Worker } = require('worker_threads');
+
+class WorkerPool {
+  constructor(workerPath, numWorkers = 4) {
+    this.workerPath = workerPath;
+    this.numWorkers = numWorkers;
+    this.workers = [];
+    this.freeWorkers = [];
+    this.queue = [];
+
+    this.init();
+  }
+
+  init() {
+    for (let i = 0; i < this.numWorkers; i++) {
+      const worker = new Worker(this.workerPath);
+      this.workers.push(worker);
+      this.freeWorkers.push(worker);
+    }
+  }
+
+  runTask(data) {
+    return new Promise((resolve, reject) => {
+      const task = { data, resolve, reject };
+
+      if (this.freeWorkers.length > 0) {
+        this.executeTask(task);
+      } else {
+        this.queue.push(task);
+      }
+    });
+  }
+
+  executeTask(task) {
+    const worker = this.freeWorkers.pop();
+
+    worker.once('message', (result) => {
+      task.resolve(result);
+      this.freeWorkers.push(worker);
+      
+      if (this.queue.length > 0) {
+        this.executeTask(this.queue.shift());
+      }
+    });
+
+    worker.once('error', (error) => {
+      task.reject(error);
+      this.freeWorkers.push(worker);
+    });
+
+    worker.postMessage(task.data);
+  }
+
+  destroy() {
+    this.workers.forEach(worker => worker.terminate());
+  }
+}
+
+// Usage
+const pool = new WorkerPool('./worker.js', 4);
+
+app.get('/process/:data', async (req, res) => {
+  try {
+    const result = await pool.runTask({ data: req.params.data });
+    res.json({ result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+```
+
+---
+
+#### **3. Use setImmediate to Break Up Long Operations**
+
+Split CPU-intensive tasks into smaller chunks and yield control back to the event loop:
+
+```javascript
+// ❌ BAD: Blocks the event loop
+function processLargeArray(array) {
+  return array.map(item => {
+    // CPU-intensive operation
+    return expensiveCalculation(item);
+  });
+}
+
+// ✅ GOOD: Non-blocking with setImmediate
+function processLargeArrayAsync(array, callback) {
+  let index = 0;
+  const results = [];
+  const chunkSize = 1000;
+  
+  function processChunk() {
+    const end = Math.min(index + chunkSize, array.length);
+    
+    // Process chunk
+    for (let i = index; i < end; i++) {
+      results.push(expensiveCalculation(array[i]));
+    }
+    
+    index = end;
     
     if (index < array.length) {
+      // Yield control back to event loop
       setImmediate(processChunk);
     } else {
-      callback();
+      callback(null, results);
     }
   }
   
   processChunk();
 }
+
+// Promise-based version
+function processLargeArrayPromise(array) {
+  return new Promise((resolve, reject) => {
+    processLargeArrayAsync(array, (err, results) => {
+      if (err) reject(err);
+      else resolve(results);
+    });
+  });
+}
+
+// Usage
+app.get('/process', async (req, res) => {
+  try {
+    const results = await processLargeArrayPromise(largeArray);
+    res.json({ results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 ```
+
+---
+
+#### **4. Use Child Processes**
+
+For completely isolated tasks or running external programs:
+
+```javascript
+const { fork } = require('child_process');
+
+// heavy-task.js
+process.on('message', (data) => {
+  const result = performHeavyComputation(data);
+  process.send(result);
+});
+
+function performHeavyComputation(data) {
+  // CPU-intensive work
+  let result = 0;
+  for (let i = 0; i < 1000000000; i++) {
+    result += Math.sqrt(i);
+  }
+  return result;
+}
+
+// main.js
+function runHeavyTask(data) {
+  return new Promise((resolve, reject) => {
+    const child = fork('./heavy-task.js');
+    
+    child.send(data);
+    
+    child.on('message', (result) => {
+      resolve(result);
+      child.kill();
+    });
+    
+    child.on('error', reject);
+  });
+}
+
+app.get('/heavy', async (req, res) => {
+  try {
+    const result = await runHeavyTask(req.query.data);
+    res.json({ result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+```
+
+---
+
+#### **5. Use Streams for Large Data**
+
+Process data in chunks instead of loading everything into memory:
+
+```javascript
+// ❌ BAD: Load entire file into memory
+app.get('/large-file', (req, res) => {
+  const data = fs.readFileSync('huge-file.txt', 'utf8');
+  res.send(data);
+});
+
+// ✅ GOOD: Stream the file
+app.get('/large-file', (req, res) => {
+  const stream = fs.createReadStream('huge-file.txt', 'utf8');
+  stream.pipe(res);
+});
+
+// Transform stream for processing
+const { Transform } = require('stream');
+
+class UpperCaseTransform extends Transform {
+  _transform(chunk, encoding, callback) {
+    // Process chunk without blocking
+    this.push(chunk.toString().toUpperCase());
+    callback();
+  }
+}
+
+app.get('/process-file', (req, res) => {
+  fs.createReadStream('input.txt')
+    .pipe(new UpperCaseTransform())
+    .pipe(res);
+});
+```
+
+---
+
+#### **6. Offload to External Services**
+
+Use message queues or external services for heavy processing:
+
+```javascript
+// Using Bull Queue (Redis-backed)
+const Queue = require('bull');
+const imageQueue = new Queue('image-processing');
+
+// Add job to queue (non-blocking)
+app.post('/process-image', async (req, res) => {
+  const job = await imageQueue.add({
+    imageUrl: req.body.url,
+    userId: req.user.id
+  });
+  
+  res.json({ jobId: job.id, status: 'queued' });
+});
+
+// Worker process (separate process)
+imageQueue.process(async (job) => {
+  const { imageUrl, userId } = job.data;
+  
+  // CPU-intensive image processing
+  const result = await processImage(imageUrl);
+  
+  // Store result
+  await saveResult(userId, result);
+  
+  return result;
+});
+
+// Check job status
+app.get('/job/:id', async (req, res) => {
+  const job = await imageQueue.getJob(req.params.id);
+  const state = await job.getState();
+  
+  res.json({ state, result: job.returnvalue });
+});
+```
+
+---
+
+#### **7. Use Cluster Module for Multi-Core Utilization**
+
+Run multiple Node.js processes to utilize all CPU cores:
+
+```javascript
+const cluster = require('cluster');
+const http = require('http');
+const numCPUs = require('os').cpus().length;
+
+if (cluster.isMaster) {
+  console.log(`Master ${process.pid} is running`);
+
+  // Fork workers for each CPU core
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`Worker ${worker.process.pid} died`);
+    // Restart the worker
+    cluster.fork();
+  });
+} else {
+  // Workers share the TCP connection
+  http.createServer((req, res) => {
+    // CPU-intensive work distributed across workers
+    const result = heavyComputation();
+    res.writeHead(200);
+    res.end(`Result: ${result}\n`);
+  }).listen(8000);
+
+  console.log(`Worker ${process.pid} started`);
+}
+```
+
+---
+
+#### **Best Practices Summary**
+
+| Strategy | Use Case | Pros | Cons |
+|----------|----------|------|------|
+| **Async APIs** | I/O operations | Simple, built-in | Only for I/O |
+| **Worker Threads** | CPU-intensive tasks | True parallelism | Memory overhead |
+| **setImmediate** | Long loops | Simple, no dependencies | Still CPU-bound |
+| **Child Processes** | Isolated tasks | Complete isolation | Higher overhead |
+| **Streams** | Large data | Memory efficient | More complex |
+| **Message Queues** | Background jobs | Scalable, resilient | External dependency |
+| **Cluster** | Utilize all cores | Better throughput | More complex |
+
+#### **Monitoring Blocking Operations**
+
+```javascript
+// Detect event loop blocking
+const { monitorEventLoopDelay } = require('perf_hooks');
+
+const h = monitorEventLoopDelay({ resolution: 20 });
+h.enable();
+
+setInterval(() => {
+  const delay = h.mean / 1000000; // Convert to milliseconds
+  console.log(`Event loop delay: ${delay.toFixed(2)}ms`);
+  
+  if (delay > 100) {
+    console.warn('Event loop is significantly delayed!');
+  }
+  
+  h.reset();
+}, 1000);
+```
+
+---
+
+#### **Key Takeaways**
+
+1. ✅ **Always use async APIs** for I/O operations
+2. ✅ **Use Worker Threads** for CPU-intensive tasks
+3. ✅ **Break up long operations** with setImmediate
+4. ✅ **Use streams** for large data processing
+5. ✅ **Monitor event loop** delay in production
+6. ✅ **Consider external services** for heavy processing
+7. ✅ **Profile your code** to identify bottlenecks
+
+**Remember:** Node.js excels at I/O-bound tasks but struggles with CPU-bound operations. Choose the right tool for your specific use case!
 
 ---
 

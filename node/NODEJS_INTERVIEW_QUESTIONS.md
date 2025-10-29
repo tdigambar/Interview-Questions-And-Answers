@@ -312,30 +312,395 @@ console.log('Script end');
 ### 5. What's the difference between setImmediate and setTimeout(0)?
 
 **Answer:**
-Both schedule callbacks, but they execute in different phases of the event loop.
+
+While both `setImmediate()` and `setTimeout(0)` appear to execute callbacks "immediately", they behave differently due to how they're processed in the Node.js event loop.
+
+#### Key Differences
+
+| Feature | setTimeout(0) | setImmediate() |
+|---------|---------------|----------------|
+| **Event Loop Phase** | Timers phase | Check phase |
+| **Execution Order** | Varies in main module | Predictable in I/O callbacks |
+| **Use Case** | Delay execution to next event loop iteration | Execute after I/O operations |
+| **Minimum Delay** | 1ms (not truly 0) | None |
+| **When to Use** | Need to defer to next loop | Need to execute after I/O |
+
+---
+
+#### How They Work
+
+**setTimeout(0):**
+- Executes in the **Timers phase** (first phase of event loop)
+- Has a minimum delay of 1-4ms (not truly 0)
+- Order can be non-deterministic in the main module
+- Checks if timer threshold has been reached
+
+**setImmediate():**
+- Executes in the **Check phase** (after I/O polling)
+- No minimum delay
+- Always executes after I/O callbacks
+- More predictable in I/O contexts
+
+---
+
+#### Example 1: Main Module (Non-deterministic)
 
 ```javascript
-// setImmediate executes in the Check phase
-setImmediate(() => {
-  console.log('setImmediate');
-});
-
-// setTimeout(0) executes in the Timer phase
+// Running in main module
 setTimeout(() => {
   console.log('setTimeout');
 }, 0);
 
-// In I/O context, setImmediate always executes first
-const fs = require('fs');
-fs.readFile(__filename, () => {
-  setTimeout(() => console.log('setTimeout in I/O'), 0);
-  setImmediate(() => console.log('setImmediate in I/O'));
+setImmediate(() => {
+  console.log('setImmediate');
 });
 
-// Output in I/O context:
+// Output can be either:
+// setTimeout
+// setImmediate
+// OR
+// setImmediate
+// setTimeout
+
+// Why? It depends on when the event loop starts
+// If loop starts before timer is ready, setImmediate runs first
+// If timer is ready when loop starts, setTimeout runs first
+```
+
+---
+
+#### Example 2: Inside I/O Callback (Deterministic)
+
+```javascript
+const fs = require('fs');
+
+fs.readFile(__filename, () => {
+  // Inside I/O callback, order is ALWAYS deterministic
+  setTimeout(() => {
+    console.log('setTimeout in I/O');
+  }, 0);
+  
+  setImmediate(() => {
+    console.log('setImmediate in I/O');
+  });
+});
+
+// Output is ALWAYS:
 // setImmediate in I/O
 // setTimeout in I/O
+
+// Why? After I/O callbacks, event loop goes to Check phase (setImmediate)
+// Then completes the loop and starts again at Timers phase (setTimeout)
 ```
+
+---
+
+#### Example 3: Event Loop Phases
+
+```javascript
+const fs = require('fs');
+
+console.log('1. Start');
+
+setTimeout(() => {
+  console.log('2. setTimeout 0');
+}, 0);
+
+setImmediate(() => {
+  console.log('3. setImmediate');
+});
+
+fs.readFile(__filename, () => {
+  console.log('4. I/O callback');
+  
+  setTimeout(() => {
+    console.log('5. setTimeout in I/O');
+  }, 0);
+  
+  setImmediate(() => {
+    console.log('6. setImmediate in I/O');
+  });
+  
+  process.nextTick(() => {
+    console.log('7. nextTick in I/O');
+  });
+});
+
+process.nextTick(() => {
+  console.log('8. nextTick');
+});
+
+console.log('9. End');
+
+// Guaranteed Output Order:
+// 1. Start
+// 9. End
+// 8. nextTick
+// 2. setTimeout 0 (or 3)
+// 3. setImmediate (or 2)
+// 4. I/O callback
+// 7. nextTick in I/O
+// 6. setImmediate in I/O
+// 5. setTimeout in I/O
+```
+
+---
+
+#### Example 4: Recursive Scheduling
+
+```javascript
+// Using setTimeout(0) - can starve other operations
+let count = 0;
+function recursiveTimeout() {
+  console.log(`setTimeout: ${++count}`);
+  if (count < 3) {
+    setTimeout(recursiveTimeout, 0);
+  }
+}
+recursiveTimeout();
+
+// Using setImmediate - allows I/O operations between iterations
+let count2 = 0;
+function recursiveImmediate() {
+  console.log(`setImmediate: ${++count2}`);
+  if (count2 < 3) {
+    setImmediate(recursiveImmediate);
+  }
+}
+recursiveImmediate();
+
+// setImmediate is better for recursive operations
+// It yields to I/O operations between each iteration
+```
+
+---
+
+#### Example 5: Long-Running Task
+
+```javascript
+// ❌ BAD: Using setTimeout(0) for breaking up work
+function processArray(array) {
+  let index = 0;
+  
+  function processChunk() {
+    const chunk = array.slice(index, index + 1000);
+    // Process chunk...
+    
+    index += 1000;
+    if (index < array.length) {
+      setTimeout(processChunk, 0); // Less predictable
+    }
+  }
+  
+  processChunk();
+}
+
+// ✅ GOOD: Using setImmediate for breaking up work
+function processArrayBetter(array) {
+  let index = 0;
+  
+  function processChunk() {
+    const chunk = array.slice(index, index + 1000);
+    // Process chunk...
+    
+    index += 1000;
+    if (index < array.length) {
+      setImmediate(processChunk); // More predictable, better for I/O
+    }
+  }
+  
+  processChunk();
+}
+```
+
+---
+
+#### Example 6: HTTP Server Context
+
+```javascript
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+  // Inside an I/O callback (HTTP request)
+  
+  setTimeout(() => {
+    console.log('setTimeout in HTTP');
+  }, 0);
+  
+  setImmediate(() => {
+    console.log('setImmediate in HTTP');
+    res.end('Response sent');
+  });
+  
+  // Output will ALWAYS be:
+  // setImmediate in HTTP
+  // setTimeout in HTTP
+});
+
+server.listen(3000);
+```
+
+---
+
+#### Example 7: Measuring Execution Time
+
+```javascript
+// setTimeout(0) - minimum 1ms delay
+const start1 = Date.now();
+setTimeout(() => {
+  console.log(`setTimeout delay: ${Date.now() - start1}ms`);
+  // Usually 1-4ms
+}, 0);
+
+// setImmediate - no minimum delay
+const start2 = Date.now();
+setImmediate(() => {
+  console.log(`setImmediate delay: ${Date.now() - start2}ms`);
+  // Usually < 1ms in I/O context
+});
+```
+
+---
+
+#### When to Use Which?
+
+**Use `setTimeout(0)` when:**
+- ❌ Actually, there's rarely a good reason to use `setTimeout(0)`
+- You need backward compatibility with browser code
+- You specifically need timer phase behavior
+
+**Use `setImmediate()` when:**
+- ✅ Breaking up CPU-intensive operations
+- ✅ Deferring execution after I/O operations
+- ✅ Recursive operations that should yield to I/O
+- ✅ In Node.js-specific code
+- ✅ Need predictable behavior in I/O contexts
+
+---
+
+#### Performance Comparison
+
+```javascript
+// Benchmark
+const iterations = 10000;
+
+// setTimeout(0) benchmark
+console.time('setTimeout(0)');
+let count1 = 0;
+function timeoutTest() {
+  if (++count1 < iterations) {
+    setTimeout(timeoutTest, 0);
+  } else {
+    console.timeEnd('setTimeout(0)');
+  }
+}
+timeoutTest();
+
+// setImmediate benchmark
+console.time('setImmediate');
+let count2 = 0;
+function immediateTest() {
+  if (++count2 < iterations) {
+    setImmediate(immediateTest);
+  } else {
+    console.timeEnd('setImmediate');
+  }
+}
+immediateTest();
+
+// setImmediate is typically faster
+```
+
+---
+
+#### Common Pitfalls
+
+```javascript
+// ❌ PITFALL 1: Expecting setTimeout(0) to be instant
+setTimeout(() => {
+  console.log('This is NOT instant');
+}, 0);
+// Still has ~1ms delay
+
+// ❌ PITFALL 2: Assuming consistent order in main module
+setTimeout(() => console.log('A'), 0);
+setImmediate(() => console.log('B'));
+// Order is NOT guaranteed in main module
+
+// ✅ SOLUTION: Use in I/O context for deterministic behavior
+fs.readFile('file.txt', () => {
+  setTimeout(() => console.log('A'), 0);
+  setImmediate(() => console.log('B'));
+  // B will ALWAYS come before A
+});
+
+// ❌ PITFALL 3: Using setTimeout(0) for recursive operations
+function recursive() {
+  doWork();
+  setTimeout(recursive, 0); // Can starve I/O
+}
+
+// ✅ SOLUTION: Use setImmediate
+function recursive() {
+  doWork();
+  setImmediate(recursive); // Allows I/O between iterations
+}
+```
+
+---
+
+#### Browser vs Node.js
+
+```javascript
+// In browsers: setImmediate doesn't exist (except IE/Edge legacy)
+// In Node.js: Both exist but behave differently
+
+// Browser alternative to setImmediate:
+if (typeof setImmediate === 'undefined') {
+  var setImmediate = function(callback) {
+    setTimeout(callback, 0);
+  };
+}
+
+// Node.js-specific code should use setImmediate
+// Browser/universal code should use setTimeout
+```
+
+---
+
+#### Best Practices
+
+1. **✅ Prefer `setImmediate()` in Node.js**
+   - More predictable in I/O contexts
+   - Better for recursive operations
+   - Doesn't have minimum delay
+
+2. **✅ Use `setTimeout()` for actual delays**
+   - When you need a specific delay time
+   - `setTimeout(callback, 100)` not `setTimeout(callback, 0)`
+
+3. **✅ Use `process.nextTick()` for microtasks**
+   - When you need to execute before any I/O
+   - But be careful of starving the event loop
+
+4. **✅ Break up long operations**
+   - Use `setImmediate()` to yield to I/O
+   - Keep event loop responsive
+
+---
+
+#### Summary
+
+| Aspect | setTimeout(0) | setImmediate() |
+|--------|---------------|----------------|
+| **Actual delay** | ~1-4ms minimum | No minimum delay |
+| **Event loop phase** | Timers (first) | Check (after I/O) |
+| **In main module** | Order varies | Order varies |
+| **In I/O callback** | Runs second | Runs first |
+| **Best for** | Specific delays | Breaking up work |
+| **Recommendation** | Use with actual delay | Prefer in Node.js |
+
+**Key Takeaway:** In Node.js, prefer `setImmediate()` for deferring execution, especially within I/O callbacks. Reserve `setTimeout()` for when you actually need a delay.
 
 ### 6. What are microtasks and macrotasks?
 

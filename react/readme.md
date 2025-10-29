@@ -640,24 +640,553 @@ const MyComponent = React.memo(
 );
 ```
 
-### 25. What is lazy loading in React?
+### 25. What are Code Splitting and Lazy Loading in React?
 
-Lazy loading splits code into smaller chunks and loads components on demand.
+**Code Splitting** is the process of splitting your application's bundle into smaller chunks that can be loaded on demand, reducing the initial load time.
+
+**Lazy Loading** is the technique of loading components or modules only when they are needed, rather than loading everything upfront.
+
+#### Why Use Code Splitting & Lazy Loading?
+
+**Problems without code splitting:**
+- Large bundle size (all code loaded at once)
+- Slow initial page load
+- Poor user experience on slow networks
+- Wasted bandwidth for unused features
+
+**Benefits:**
+- ✅ Faster initial page load
+- ✅ Reduced bundle size
+- ✅ Better performance
+- ✅ Load resources on demand
+- ✅ Improved user experience
+
+---
+
+#### 1. React.lazy() and Suspense
+
+The most common way to implement code splitting in React:
 
 ```jsx
-import { lazy, Suspense } from 'react';
+import React, { lazy, Suspense } from 'react';
 
-// Lazy load component
-const LazyComponent = lazy(() => import('./LazyComponent'));
+// ❌ Regular import - loads immediately
+// import HeavyComponent from './HeavyComponent';
+
+// ✅ Lazy import - loads when needed
+const HeavyComponent = lazy(() => import('./HeavyComponent'));
+
+function App() {
+  return (
+    <div>
+      <h1>My App</h1>
+      
+      {/* Suspense provides fallback UI while component loads */}
+      <Suspense fallback={<div>Loading component...</div>}>
+        <HeavyComponent />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+**How it works:**
+1. Component is not in initial bundle
+2. When component is rendered, React requests it
+3. Fallback UI displays while loading
+4. Component renders once loaded
+
+---
+
+#### 2. Route-Based Code Splitting
+
+Split code by routes - most effective strategy:
+
+```jsx
+import React, { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+// Static imports for critical components
+import Header from './components/Header';
+import Footer from './components/Footer';
+
+// Lazy load route components
+const Home = lazy(() => import('./pages/Home'));
+const About = lazy(() => import('./pages/About'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Profile = lazy(() => import('./pages/Profile'));
+
+// Loading component
+const LoadingSpinner = () => (
+  <div className="loading">
+    <div className="spinner"></div>
+    <p>Loading...</p>
+  </div>
+);
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Header />
+      
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<Profile />} />
+        </Routes>
+      </Suspense>
+      
+      <Footer />
+    </BrowserRouter>
+  );
+}
+
+export default App;
+```
+
+---
+
+#### 3. Component-Based Code Splitting
+
+Split large components that aren't always needed:
+
+```jsx
+import React, { lazy, Suspense, useState } from 'react';
+
+// Lazy load heavy components
+const VideoPlayer = lazy(() => import('./VideoPlayer'));
+const Chart = lazy(() => import('./Chart'));
+const Map = lazy(() => import('./Map'));
+
+function Dashboard() {
+  const [showVideo, setShowVideo] = useState(false);
+  const [showChart, setShowChart] = useState(false);
+
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      
+      {/* Load video player only when user clicks */}
+      <button onClick={() => setShowVideo(true)}>
+        Show Video
+      </button>
+      
+      {showVideo && (
+        <Suspense fallback={<div>Loading video player...</div>}>
+          <VideoPlayer url="/video.mp4" />
+        </Suspense>
+      )}
+      
+      {/* Load chart on demand */}
+      <button onClick={() => setShowChart(true)}>
+        Show Chart
+      </button>
+      
+      {showChart && (
+        <Suspense fallback={<div>Loading chart...</div>}>
+          <Chart data={[1, 2, 3, 4, 5]} />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+#### 4. Multiple Suspense Boundaries
+
+Use multiple Suspense components for better UX:
+
+```jsx
+import React, { lazy, Suspense } from 'react';
+
+const Sidebar = lazy(() => import('./Sidebar'));
+const MainContent = lazy(() => import('./MainContent'));
+const Comments = lazy(() => import('./Comments'));
+
+function Page() {
+  return (
+    <div className="page">
+      {/* Each section has its own loading state */}
+      <Suspense fallback={<div>Loading sidebar...</div>}>
+        <Sidebar />
+      </Suspense>
+      
+      <Suspense fallback={<div>Loading content...</div>}>
+        <MainContent />
+      </Suspense>
+      
+      <Suspense fallback={<div>Loading comments...</div>}>
+        <Comments />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+---
+
+#### 5. Named Exports with Lazy Loading
+
+Handle named exports (not default):
+
+```jsx
+// Component.js
+export const Button = () => <button>Click me</button>;
+export const Input = () => <input />;
+
+// App.js
+import React, { lazy, Suspense } from 'react';
+
+// ❌ This won't work
+// const Button = lazy(() => import('./Component').Button);
+
+// ✅ Correct way - re-export as default
+const Button = lazy(() => 
+  import('./Component').then(module => ({ default: module.Button }))
+);
+
+const Input = lazy(() =>
+  import('./Component').then(module => ({ default: module.Input }))
+);
 
 function App() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
+      <Button />
+      <Input />
+    </Suspense>
+  );
+}
+```
+
+---
+
+#### 6. Preloading Components
+
+Preload components before they're needed:
+
+```jsx
+import React, { lazy, Suspense, useState, useEffect } from 'react';
+
+const HeavyComponent = lazy(() => import('./HeavyComponent'));
+
+// Preload function
+const preloadComponent = () => {
+  const component = import('./HeavyComponent');
+  return component;
+};
+
+function App() {
+  const [show, setShow] = useState(false);
+
+  // Preload on mouse hover
+  const handleMouseEnter = () => {
+    preloadComponent();
+  };
+
+  // Or preload after initial render
+  useEffect(() => {
+    // Preload after 2 seconds
+    const timer = setTimeout(() => {
+      preloadComponent();
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div>
+      <button 
+        onClick={() => setShow(true)}
+        onMouseEnter={handleMouseEnter}
+      >
+        Show Component
+      </button>
+      
+      {show && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <HeavyComponent />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+#### 7. Error Handling with Lazy Loading
+
+Combine with Error Boundaries:
+
+```jsx
+import React, { lazy, Suspense, Component } from 'react';
+
+// Error Boundary
+class ErrorBoundary extends Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Lazy loading error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div>
+          <h2>Failed to load component</h2>
+          <button onClick={() => window.location.reload()}>
+            Reload Page
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+const LazyComponent = lazy(() => import('./LazyComponent'));
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<div>Loading...</div>}>
+        <LazyComponent />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+```
+
+---
+
+#### 8. Dynamic Import with Variables
+
+Load components based on conditions:
+
+```jsx
+import React, { lazy, Suspense, useState } from 'react';
+
+function DynamicComponentLoader() {
+  const [componentName, setComponentName] = useState('');
+  const [Component, setComponent] = useState(null);
+
+  const loadComponent = (name) => {
+    // Dynamic import based on user selection
+    const LazyComponent = lazy(() => 
+      import(`./components/${name}`)
+        .catch(() => import('./components/NotFound'))
+    );
+    
+    setComponent(() => LazyComponent);
+  };
+
+  return (
+    <div>
+      <select onChange={(e) => loadComponent(e.target.value)}>
+        <option value="">Select Component</option>
+        <option value="Dashboard">Dashboard</option>
+        <option value="Profile">Profile</option>
+        <option value="Settings">Settings</option>
+      </select>
+
+      {Component && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <Component />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+#### 9. Library Code Splitting
+
+Split large libraries:
+
+```jsx
+import React, { lazy, Suspense, useState } from 'react';
+
+// Don't import heavy libraries at the top
+// import moment from 'moment'; // ❌ Large library loaded upfront
+
+function DateFormatter() {
+  const [formattedDate, setFormattedDate] = useState('');
+
+  const formatDate = async () => {
+    // ✅ Load library only when needed
+    const moment = await import('moment');
+    const formatted = moment.default().format('MMMM Do YYYY');
+    setFormattedDate(formatted);
+  };
+
+  return (
+    <div>
+      <button onClick={formatDate}>Format Date</button>
+      {formattedDate && <p>{formattedDate}</p>}
+    </div>
+  );
+}
+
+// Or with lazy loading
+const DatePicker = lazy(() => 
+  import('react-datepicker').then(module => ({
+    default: module.default
+  }))
+);
+```
+
+---
+
+#### 10. Webpack Magic Comments
+
+Control how chunks are loaded:
+
+```jsx
+import React, { lazy, Suspense } from 'react';
+
+// Name the chunk
+const Dashboard = lazy(() => 
+  import(/* webpackChunkName: "dashboard" */ './Dashboard')
+);
+
+// Prefetch - load during idle time
+const Profile = lazy(() => 
+  import(/* webpackPrefetch: true */ './Profile')
+);
+
+// Preload - load in parallel with parent
+const Settings = lazy(() => 
+  import(/* webpackPreload: true */ './Settings')
+);
+
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Dashboard />
+    </Suspense>
+  );
+}
+```
+
+---
+
+#### Best Practices
+
+1. **Route-Based Splitting First**
+   - Split by routes before components
+   - Biggest impact on initial load time
+
+2. **Use Multiple Suspense Boundaries**
+   - Better loading experience
+   - Isolated loading states
+
+3. **Meaningful Fallbacks**
+   - Show skeleton screens
+   - Match the component's layout
+
+4. **Error Boundaries**
+   - Always wrap lazy components
+   - Handle loading failures gracefully
+
+5. **Preload Critical Components**
+   - Preload on hover/interaction
+   - Improve perceived performance
+
+6. **Avoid Over-Splitting**
+   - Too many small chunks = many HTTP requests
+   - Balance chunk size and quantity
+
+7. **Monitor Bundle Size**
+   - Use webpack-bundle-analyzer
+   - Track chunk sizes over time
+
+---
+
+#### Common Patterns
+
+**Loading Skeleton:**
+
+```jsx
+const Skeleton = () => (
+  <div className="skeleton">
+    <div className="skeleton-header" />
+    <div className="skeleton-content" />
+    <div className="skeleton-footer" />
+  </div>
+);
+
+function App() {
+  return (
+    <Suspense fallback={<Skeleton />}>
       <LazyComponent />
     </Suspense>
   );
 }
 ```
+
+**Retry Mechanism:**
+
+```jsx
+function lazyWithRetry(componentImport) {
+  return new Promise((resolve, reject) => {
+    const hasRefreshed = JSON.parse(
+      window.sessionStorage.getItem('retry-lazy-refreshed') || 'false'
+    );
+
+    componentImport()
+      .then(component => {
+        window.sessionStorage.setItem('retry-lazy-refreshed', 'false');
+        resolve(component);
+      })
+      .catch(error => {
+        if (!hasRefreshed) {
+          window.sessionStorage.setItem('retry-lazy-refreshed', 'true');
+          return window.location.reload();
+        }
+        reject(error);
+      });
+  });
+}
+
+const LazyComponent = lazy(() => lazyWithRetry(() => import('./Component')));
+```
+
+---
+
+#### Measuring Impact
+
+```jsx
+// Before code splitting
+// Initial bundle: 2.5 MB
+// Load time: 8s
+
+// After code splitting
+// Initial bundle: 300 KB
+// Route chunks: 200 KB each
+// Load time: 1.5s (initial), 0.5s (per route)
+```
+
+**Key Takeaways:**
+
+- ✅ Use `React.lazy()` for component code splitting
+- ✅ Always wrap lazy components with `Suspense`
+- ✅ Split by routes first, then by components
+- ✅ Use multiple Suspense boundaries for better UX
+- ✅ Combine with Error Boundaries for error handling
+- ✅ Preload components when user intent is clear
+- ✅ Monitor and analyze your bundle sizes
 
 ### 26. What is Error Boundary?
 

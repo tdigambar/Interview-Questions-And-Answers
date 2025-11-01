@@ -264,20 +264,13 @@ console.log(factorialRecursive(5)); // Output: 120
 **Time Complexity:** O(n)  
 **Space Complexity:** O(n) — due to recursive call stack
 
-#### 🧠 Bonus: One-Liner Version (ES6)
-
-```javascript
-const factorial = n => n <= 1 ? 1 : n * factorial(n - 1);
-console.log(factorial(5)); // 120
-```
-
 ---
 
 ### ✅ Prime Numbers (1 to 100)
 
 **Problem:** Print all prime numbers from 1 to 100.
 
-#### Simple Method
+#### ✅ 1️⃣ Simple Method
 
 ```javascript
 function isPrime(num) {
@@ -299,22 +292,7 @@ printPrimesUpTo100();
 
 **Output:** 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97
 
-#### ⚡ Modern ES6 Version
-
-```javascript
-const primes = Array.from({ length: 101 }, (_, i) => i)
-  .filter(n => {
-    if (n < 2) return false;
-    for (let i = 2; i <= Math.sqrt(n); i++) {
-      if (n % i === 0) return false;
-    }
-    return true;
-  });
-
-console.log(primes);
-```
-
-#### 🧠 Sieve of Eratosthenes (Most Efficient)
+#### ⚡ 2️⃣ Sieve of Eratosthenes (Most Efficient)
 
 ```javascript
 function sieveOfEratosthenes(limit) {
@@ -371,26 +349,7 @@ console.log(reverseString("Hello World")); // "dlroW olleH"
 
 ---
 
-#### ⚡ 2️⃣ Using a For Loop (Forward Iteration)
-
-```javascript
-function reverseString(str) {
-  let reversed = '';
-  for (let i = 0; i < str.length; i++) {
-    reversed = str[i] + reversed; // Prepend each character
-  }
-  return reversed;
-}
-
-console.log(reverseString("JavaScript")); // "tpircSavaJ"
-```
-
-**Time Complexity:** O(n)  
-**Space Complexity:** O(n)
-
----
-
-#### 🔄 3️⃣ Using Recursion
+#### ⚡ 2️⃣ Using Recursion
 
 ```javascript
 function reverseStringRecursive(str) {
@@ -402,240 +361,10 @@ function reverseStringRecursive(str) {
 }
 
 console.log(reverseStringRecursive("Hello")); // "olleH"
-
-// Alternative recursive approach
-function reverseRecursive2(str) {
-  if (str.length <= 1) return str;
-  return reverseRecursive2(str.substring(1)) + str[0];
-}
-
-console.log(reverseRecursive2("World")); // "dlroW"
 ```
 
 **Time Complexity:** O(n)  
 **Space Complexity:** O(n) - due to call stack
-
----
-
-#### 🧮 4️⃣ Using Array Push (Manual Array Building)
-
-```javascript
-function reverseString(str) {
-  const arr = [];
-  
-  // Manually push characters in reverse order
-  for (let i = str.length - 1; i >= 0; i--) {
-    arr[arr.length] = str[i]; // Manual push without push()
-  }
-  
-  // Manually join without join()
-  let result = '';
-  for (let i = 0; i < arr.length; i++) {
-    result += arr[i];
-  }
-  
-  return result;
-}
-
-console.log(reverseString("Interview")); // "weivetnI"
-```
-
-**Time Complexity:** O(n)  
-**Space Complexity:** O(n)
-
----
-
-#### 🎯 5️⃣ Using for...of Loop
-
-```javascript
-function reverseString(str) {
-  let reversed = '';
-  
-  for (let char of str) {
-    reversed = char + reversed; // Prepend each character
-  }
-  
-  return reversed;
-}
-
-console.log(reverseString("Code")); // "edoC"
-```
-
-**Time Complexity:** O(n)  
-**Space Complexity:** O(n)
-
----
-
-#### 🔁 6️⃣ Using While Loop
-
-```javascript
-function reverseString(str) {
-  let reversed = '';
-  let i = str.length - 1;
-  
-  while (i >= 0) {
-    reversed += str[i];
-    i--;
-  }
-  
-  return reversed;
-}
-
-console.log(reverseString("Programming")); // "gnimmargorP"
-```
-
-**Time Complexity:** O(n)  
-**Space Complexity:** O(n)
-
----
-
-#### 🧩 7️⃣ Using Stack Approach (LIFO)
-
-```javascript
-function reverseString(str) {
-  const stack = [];
-  
-  // Push all characters to stack
-  for (let i = 0; i < str.length; i++) {
-    stack[stack.length] = str[i]; // Manual push
-  }
-  
-  let reversed = '';
-  
-  // Pop all characters from stack
-  while (stack.length > 0) {
-    reversed += stack[stack.length - 1]; // Get last element
-    stack.length = stack.length - 1; // Manual pop
-  }
-  
-  return reversed;
-}
-
-console.log(reverseString("Stack")); // "kcatS"
-```
-
-**Time Complexity:** O(n)  
-**Space Complexity:** O(n)
-
----
-
-#### 🎨 8️⃣ Two-Pointer Swap (Array Conversion)
-
-```javascript
-function reverseString(str) {
-  // Convert to array manually
-  const arr = [];
-  for (let i = 0; i < str.length; i++) {
-    arr[i] = str[i];
-  }
-  
-  // Two-pointer swap
-  let left = 0;
-  let right = arr.length - 1;
-  
-  while (left < right) {
-    // Swap without temp variable using destructuring
-    [arr[left], arr[right]] = [arr[right], arr[left]];
-    left++;
-    right--;
-  }
-  
-  // Convert back to string manually
-  let result = '';
-  for (let i = 0; i < arr.length; i++) {
-    result += arr[i];
-  }
-  
-  return result;
-}
-
-console.log(reverseString("Algorithm")); // "mhtirogla"
-```
-
-**Time Complexity:** O(n)  
-**Space Complexity:** O(n)
-
----
-
-#### 🌀 9️⃣ Using Reduce (Without Built-in Reverse)
-
-```javascript
-function reverseString(str) {
-  // Convert string to array manually
-  const chars = [];
-  for (let i = 0; i < str.length; i++) {
-    chars[i] = str[i];
-  }
-  
-  // Use reduce to reverse
-  return chars.reduce((reversed, char) => char + reversed, '');
-}
-
-console.log(reverseString("Reduce")); // "ecudeR"
-```
-
-**Time Complexity:** O(n)  
-**Space Complexity:** O(n)
-
----
-
-#### 🔟 Bonus: XOR Swap in Array (In-Place)
-
-```javascript
-function reverseString(str) {
-  // Convert to array
-  const arr = [];
-  for (let i = 0; i < str.length; i++) {
-    arr[i] = str[i];
-  }
-  
-  // XOR swap (works with character codes)
-  for (let i = 0; i < Math.floor(arr.length / 2); i++) {
-    const j = arr.length - 1 - i;
-    
-    // Store character codes
-    let charCodeI = arr[i].charCodeAt(0);
-    let charCodeJ = arr[j].charCodeAt(0);
-    
-    // XOR swap
-    charCodeI ^= charCodeJ;
-    charCodeJ ^= charCodeI;
-    charCodeI ^= charCodeJ;
-    
-    // Convert back to characters
-    arr[i] = String.fromCharCode(charCodeJ);
-    arr[j] = String.fromCharCode(charCodeI);
-  }
-  
-  // Manual join
-  let result = '';
-  for (let i = 0; i < arr.length; i++) {
-    result += arr[i];
-  }
-  
-  return result;
-}
-
-console.log(reverseString("XOR")); // "ROX"
-```
-
-**Time Complexity:** O(n)  
-**Space Complexity:** O(n)
-
----
-
-#### 📊 Comparison Table
-
-| Approach | Readability | Performance | Space | Interview Use |
-|----------|-------------|-------------|-------|---------------|
-| **For Loop (Backward)** | ⭐⭐⭐⭐⭐ | Fast | O(n) | ✅ Best |
-| **For Loop (Forward)** | ⭐⭐⭐⭐ | Fast | O(n) | ✅ Good |
-| **Recursion** | ⭐⭐⭐ | Slower | O(n) stack | ⚠️ Stack overflow risk |
-| **for...of** | ⭐⭐⭐⭐⭐ | Fast | O(n) | ✅ Clean |
-| **While Loop** | ⭐⭐⭐⭐ | Fast | O(n) | ✅ Good |
-| **Stack** | ⭐⭐⭐ | Moderate | O(n) | 📚 Educational |
-| **Two-Pointer** | ⭐⭐⭐ | Fast | O(n) | 📚 Advanced |
-| **XOR Swap** | ⭐⭐ | Complex | O(n) | 🎓 Show-off |
 
 ---
 
@@ -763,17 +492,6 @@ console.log(isPalindromeTwoPointer("hello"));   // false
 **Time Complexity:** O(n)  
 **Space Complexity:** O(1)
 
-#### ⚡ Bonus (One-Liner for Quick Check)
-
-```javascript
-const isPalindromeQuick = s => {
-  s = s.toLowerCase().replace(/[^a-z0-9]/g, '');
-  return s === [...s].reverse().join('');
-};
-
-console.log(isPalindromeQuick("Level")); // true
-```
-
 ---
 
 ### ✅ Count Vowels in String
@@ -807,20 +525,6 @@ function countVowelsRegex(str) {
 }
 
 console.log(countVowelsRegex("HELLO World")); // Output: 3 (E, O, o)
-```
-
-#### ✅ 3️⃣ Using Array Filter (Functional Style)
-
-```javascript
-function countVowelsFilter(str) {
-  const vowels = ['a', 'e', 'i', 'o', 'u'];
-  return str
-    .toLowerCase()
-    .split('')
-    .filter(ch => vowels.includes(ch)).length;
-}
-
-console.log(countVowelsFilter("Interview Prep")); // Output: 5
 ```
 
 **Examples:**
@@ -878,18 +582,6 @@ console.log(secondLargest([10, 5, 8, 20, 20, 9])); // Output: 10
 
 **Time Complexity:** O(n)  
 **Space Complexity:** O(1)
-
-#### 🧮 3️⃣ Using Math & Filter (Readable ES6 Version)
-
-```javascript
-function secondLargest(arr) {
-  const max = Math.max(...arr);
-  const filtered = arr.filter(n => n !== max);
-  return filtered.length ? Math.max(...filtered) : null;
-}
-
-console.log(secondLargest([3, 7, 2, 9, 9, 5])); // Output: 7
-```
 
 **Examples:**
 
@@ -1126,15 +818,6 @@ console.log(segregateBinaryArray([0, 1, 0, 1, 1, 1])); // [0, 0, 1, 1, 1, 1]
 
 **Time Complexity:** O(n)  
 **Space Complexity:** O(1)
-
-#### 🧮 3️⃣ Using sort() (Quick but Not Optimal)
-
-```javascript
-const segregated = [0, 1, 0, 1, 1, 1].sort((a, b) => a - b);
-console.log(segregated); // [0, 0, 1, 1, 1, 1]
-```
-
-**Time Complexity:** O(n log n)
 
 **Examples:**
 

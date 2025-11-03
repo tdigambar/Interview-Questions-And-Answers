@@ -17,6 +17,7 @@ Comprehensive collection of common JavaScript interview programming problems wit
    - [Palindrome Check](#-palindrome-check)
    - [Count Vowels in String](#-count-vowels-in-string)
 8. [Array Algorithms](#array-algorithms)
+   - [Search in Rotated Sorted Array](#-search-in-rotated-sorted-array)
    - [Flatten a Nested Array](#-flatten-a-nested-array)
 9. [Binary Array Problems](#binary-array-problems)
 10. [Dynamic Programming](#dynamic-programming)
@@ -646,6 +647,137 @@ console.log(mergeSortedArraysQuick([1, 3, 5, 7], [2, 4, 6, 8]));
 ```
 
 **Time Complexity:** O((n + m) log(n + m))
+
+---
+
+### ✅ Search in Rotated Sorted Array
+
+**Problem:** Search for a target value in a rotated sorted array. A rotated sorted array is one where the array has been rotated around a pivot point.
+
+**Input:** `nums = [4, 5, 6, 7, 0, 1, 2]`, `target = 0`  
+**Output:** `4` (index where target is found)
+
+**Explanation:** The array `[0, 1, 2, 4, 5, 6, 7]` was rotated at index 3, resulting in `[4, 5, 6, 7, 0, 1, 2]`.
+
+#### ⚡ Binary Search Approach (Optimal)
+
+```javascript
+function searchRotatedArray(nums, target) {
+  let left = 0;
+  let right = nums.length - 1;
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+
+    // Target found
+    if (nums[mid] === target) {
+      return mid;
+    }
+
+    // Determine which half is sorted
+    // Left half [left...mid] is sorted
+    if (nums[left] <= nums[mid]) {
+      // Check if target is in the sorted left half
+      if (nums[left] <= target && target < nums[mid]) {
+        right = mid - 1; // Search left half
+      } else {
+        left = mid + 1; // Search right half
+      }
+    }
+    // Right half [mid...right] is sorted
+    else {
+      // Check if target is in the sorted right half
+      if (nums[mid] < target && target <= nums[right]) {
+        left = mid + 1; // Search right half
+      } else {
+        right = mid - 1; // Search left half
+      }
+    }
+  }
+
+  return -1; // Target not found
+}
+
+console.log(searchRotatedArray([4, 5, 6, 7, 0, 1, 2], 0)); // Output: 4
+console.log(searchRotatedArray([4, 5, 6, 7, 0, 1, 2], 3)); // Output: -1
+console.log(searchRotatedArray([1], 0));                   // Output: -1
+```
+
+**Logic:**
+1. Use binary search to find the target
+2. At each step, determine which half is sorted (left or right)
+3. Check if the target lies within the sorted half:
+   - If yes, search in that sorted half
+   - If no, search in the other half (which contains the rotation point)
+
+**Time Complexity:** O(log n)  
+**Space Complexity:** O(1)
+
+#### 🧩 Alternative: Find Pivot First, Then Search
+
+```javascript
+function searchRotatedArrayAlternative(nums, target) {
+  // Step 1: Find the pivot (rotation point)
+  function findPivot(arr) {
+    let left = 0, right = arr.length - 1;
+    
+    while (left < right) {
+      const mid = Math.floor((left + right) / 2);
+      if (arr[mid] > arr[right]) {
+        left = mid + 1;
+      } else {
+        right = mid;
+      }
+    }
+    return left;
+  }
+
+  // Step 2: Binary search in a specific range
+  function binarySearch(arr, left, right, target) {
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2);
+      if (arr[mid] === target) return mid;
+      if (arr[mid] < target) {
+        left = mid + 1;
+      } else {
+        right = mid - 1;
+      }
+    }
+    return -1;
+  }
+
+  const pivot = findPivot(nums);
+  
+  // Determine which side to search
+  if (target >= nums[pivot] && target <= nums[nums.length - 1]) {
+    return binarySearch(nums, pivot, nums.length - 1, target);
+  } else {
+    return binarySearch(nums, 0, pivot - 1, target);
+  }
+}
+
+console.log(searchRotatedArrayAlternative([4, 5, 6, 7, 0, 1, 2], 0)); // Output: 4
+```
+
+**Time Complexity:** O(log n)  
+**Space Complexity:** O(1)
+
+**Examples:**
+
+| Input Array | Target | Output | Explanation |
+|-------------|--------|--------|-------------|
+| `[4,5,6,7,0,1,2]` | `0` | `4` | Target found at index 4 |
+| `[4,5,6,7,0,1,2]` | `3` | `-1` | Target not found |
+| `[1]` | `0` | `-1` | Single element, target not found |
+| `[1,3]` | `3` | `1` | Target found at index 1 |
+| `[5,1,3]` | `3` | `2` | Target found at index 2 |
+
+**Key Points:**
+- Always exactly one half of the array is sorted
+- Use the sorted half to determine which direction to search
+- If left half is sorted and target is in range [left, mid), search left
+- If right half is sorted and target is in range (mid, right], search right
+- Otherwise, search the other half
 
 ---
 

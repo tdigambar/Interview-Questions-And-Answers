@@ -18,6 +18,7 @@ Comprehensive collection of common JavaScript interview programming problems wit
    - [Count Vowels in String](#-count-vowels-in-string)
 8. [Array Algorithms](#array-algorithms)
    - [Search in Rotated Sorted Array](#-search-in-rotated-sorted-array)
+   - [Merge Overlapping Intervals](#-merge-overlapping-intervals)
    - [Flatten a Nested Array](#-flatten-a-nested-array)
 9. [Binary Array Problems](#binary-array-problems)
 10. [Dynamic Programming](#dynamic-programming)
@@ -778,6 +779,184 @@ console.log(searchRotatedArrayAlternative([4, 5, 6, 7, 0, 1, 2], 0)); // Output:
 - If left half is sorted and target is in range [left, mid), search left
 - If right half is sorted and target is in range (mid, right], search right
 - Otherwise, search the other half
+
+---
+
+### ✅ Merge Overlapping Intervals
+
+**Problem:** Given an array of intervals where `intervals[i] = [start_i, end_i]`, merge all overlapping intervals and return an array of non-overlapping intervals that cover all intervals in the input.
+
+**Input:** `intervals = [[1,3],[2,6],[8,10],[15,18]]`  
+**Output:** `[[1,6],[8,10],[15,18]]`
+
+**Explanation:** Since intervals `[1,3]` and `[2,6]` overlap, merge them into `[1,6]`.
+
+#### ⚡ Sorting + Merge Approach (Optimal)
+
+```javascript
+function mergeIntervals(intervals) {
+  if (intervals.length === 0) return [];
+  
+  // Sort intervals by start time
+  intervals.sort((a, b) => a[0] - b[0]);
+  
+  const merged = [intervals[0]];
+  
+  for (let i = 1; i < intervals.length; i++) {
+    const current = intervals[i];
+    const lastMerged = merged[merged.length - 1];
+    
+    // Check if current interval overlaps with the last merged interval
+    // Overlap occurs if current.start <= lastMerged.end
+    if (current[0] <= lastMerged[1]) {
+      // Merge: update the end time to the maximum of both
+      lastMerged[1] = Math.max(lastMerged[1], current[1]);
+    } else {
+      // No overlap, add current interval as new entry
+      merged.push(current);
+    }
+  }
+  
+  return merged;
+}
+
+console.log(mergeIntervals([[1,3],[2,6],[8,10],[15,18]]));
+// Output: [[1,6],[8,10],[15,18]]
+
+console.log(mergeIntervals([[1,4],[4,5]]));
+// Output: [[1,5]]
+
+console.log(mergeIntervals([[1,4],[0,4]]));
+// Output: [[0,4]]
+```
+
+**Logic:**
+1. Sort all intervals by their start time
+2. Initialize result array with the first interval
+3. Iterate through remaining intervals:
+   - If current interval overlaps with the last merged interval (current.start ≤ last.end), merge them by updating the end time
+   - Otherwise, add the current interval as a new entry
+
+**Time Complexity:** O(n log n) — sorting takes O(n log n), merging takes O(n)  
+**Space Complexity:** O(1) — excluding the output array
+
+#### 🧩 Alternative: More Explicit Overlap Check
+
+```javascript
+function mergeIntervalsExplicit(intervals) {
+  if (intervals.length === 0) return [];
+  
+  intervals.sort((a, b) => a[0] - b[0]);
+  
+  const result = [];
+  
+  for (const interval of intervals) {
+    // If result is empty or current interval doesn't overlap with the last one
+    if (result.length === 0 || result[result.length - 1][1] < interval[0]) {
+      result.push(interval);
+    } else {
+      // Merge intervals
+      result[result.length - 1][1] = Math.max(
+        result[result.length - 1][1],
+        interval[1]
+      );
+    }
+  }
+  
+  return result;
+}
+
+console.log(mergeIntervalsExplicit([[1,3],[2,6],[8,10],[15,18]]));
+// Output: [[1,6],[8,10],[15,18]]
+```
+
+#### 🎓 Helper Function: Check if Two Intervals Overlap
+
+```javascript
+function doIntervalsOverlap(interval1, interval2) {
+  // Two intervals overlap if: start1 <= end2 AND start2 <= end1
+  return interval1[0] <= interval2[1] && interval2[0] <= interval1[1];
+}
+
+// Example usage
+console.log(doIntervalsOverlap([1, 3], [2, 6])); // true
+console.log(doIntervalsOverlap([1, 3], [4, 6])); // false
+```
+
+#### ✅ Complete Solution with Edge Cases
+
+```javascript
+function mergeIntervalsComplete(intervals) {
+  if (!intervals || intervals.length === 0) return [];
+  
+  // Sort by start time, then by end time if starts are equal
+  intervals.sort((a, b) => {
+    if (a[0] !== b[0]) return a[0] - b[0];
+    return a[1] - b[1];
+  });
+  
+  const merged = [];
+  let [currentStart, currentEnd] = intervals[0];
+  
+  for (let i = 1; i < intervals.length; i++) {
+    const [nextStart, nextEnd] = intervals[i];
+    
+    if (nextStart <= currentEnd) {
+      // Overlapping: merge by extending current interval
+      currentEnd = Math.max(currentEnd, nextEnd);
+    } else {
+      // No overlap: save current interval and start new one
+      merged.push([currentStart, currentEnd]);
+      currentStart = nextStart;
+      currentEnd = nextEnd;
+    }
+  }
+  
+  // Don't forget the last interval
+  merged.push([currentStart, currentEnd]);
+  
+  return merged;
+}
+
+console.log(mergeIntervalsComplete([[1,3],[2,6],[8,10],[15,18]]));
+// Output: [[1,6],[8,10],[15,18]]
+
+console.log(mergeIntervalsComplete([[1,4],[0,4]]));
+// Output: [[0,4]]
+
+console.log(mergeIntervalsComplete([[1,4],[2,3]]));
+// Output: [[1,4]] (one interval fully contains another)
+```
+
+**Examples:**
+
+| Input | Output | Explanation |
+|-------|--------|-------------|
+| `[[1,3],[2,6],[8,10],[15,18]]` | `[[1,6],[8,10],[15,18]]` | `[1,3]` and `[2,6]` merge to `[1,6]` |
+| `[[1,4],[4,5]]` | `[[1,5]]` | Adjacent intervals merge |
+| `[[1,4],[2,3]]` | `[[1,4]]` | One contains another |
+| `[[1,4],[0,4]]` | `[[0,4]]` | Overlapping start times |
+| `[[1,4],[0,0]]` | `[[0,0],[1,4]]` | No overlap, sorted order |
+| `[[1,4]]` | `[[1,4]]` | Single interval |
+
+**Key Points:**
+- Always sort intervals by start time first
+- Two intervals overlap if: `interval1.start ≤ interval2.end AND interval2.start ≤ interval1.end`
+- When merging, take the minimum start and maximum end
+- Handle edge cases: empty array, single interval, fully contained intervals
+
+**Common Follow-up Questions:**
+1. **Q:** What if intervals are not sorted?  
+   **A:** Always sort first — this is essential for O(n) merge step
+
+2. **Q:** Can intervals have negative numbers?  
+   **A:** Yes, the algorithm works for any numeric ranges
+
+3. **Q:** How to handle intervals with same start time?  
+   **A:** Sort by start, then by end time as tie-breaker
+
+4. **Q:** What's the time complexity?  
+   **A:** O(n log n) due to sorting, which is optimal since we must check all intervals
 
 ---
 

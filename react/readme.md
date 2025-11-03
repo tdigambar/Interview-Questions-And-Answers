@@ -640,7 +640,94 @@ const MyComponent = React.memo(
 );
 ```
 
-### 25. What are Code Splitting and Lazy Loading in React?
+### 25. What is forwardRef in React and how does it work?
+
+`forwardRef` allows a component to expose a DOM node or component instance to its parent via a ref. By default, refs only work on DOM elements, not custom components.
+
+**Problem:**
+```jsx
+// ❌ ref won't be passed through
+function CustomInput(props) {
+  return <input type="text" />;
+}
+
+function App() {
+  const inputRef = useRef(null);
+  inputRef.current.focus(); // ❌ null - ref ignored
+  return <CustomInput ref={inputRef} />;
+}
+```
+
+**Solution:**
+```jsx
+import { forwardRef, useRef } from 'react';
+
+const CustomInput = forwardRef((props, ref) => {
+  return <input ref={ref} {...props} />;
+});
+
+CustomInput.displayName = 'CustomInput'; // For debugging
+
+function App() {
+  const inputRef = useRef(null);
+  inputRef.current.focus(); // ✅ Works!
+  return <CustomInput ref={inputRef} />;
+}
+```
+
+**Exposing Methods with useImperativeHandle:**
+```jsx
+import { forwardRef, useImperativeHandle, useRef } from 'react';
+
+const CustomInput = forwardRef((props, ref) => {
+  const inputRef = useRef(null);
+  
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current.focus(),
+    clear: () => inputRef.current.value = '',
+    getValue: () => inputRef.current.value
+  }), []);
+  
+  return <input ref={inputRef} {...props} />;
+});
+
+function App() {
+  const inputRef = useRef(null);
+  return (
+    <>
+      <CustomInput ref={inputRef} />
+      <button onClick={() => inputRef.current.focus()}>Focus</button>
+      <button onClick={() => inputRef.current.clear()}>Clear</button>
+    </>
+  );
+}
+```
+
+**TypeScript Example:**
+```tsx
+interface ButtonProps {
+  children: React.ReactNode;
+  onClick?: () => void;
+}
+
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ children, onClick, ...props }, ref) => {
+    return <button ref={ref} onClick={onClick} {...props}>{children}</button>;
+  }
+);
+
+Button.displayName = 'Button';
+```
+
+**Key Points:**
+- Ref is the second parameter: `forwardRef((props, ref) => ...)`
+- Always set `displayName` for better debugging
+- Use sparingly - prefer props and state when possible
+- Combine with `useImperativeHandle` to limit exposed API
+
+---
+
+### 26. What are Code Splitting and Lazy Loading in React?
 
 **Code Splitting** is the process of splitting your application's bundle into smaller chunks that can be loaded on demand, reducing the initial load time.
 

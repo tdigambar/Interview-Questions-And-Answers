@@ -325,6 +325,92 @@ console.log(counter.getCount());  // 2
 
 ## Intermediate Level
 
+### 10. What is Callback Hell?
+
+**Callback Hell** (also called "Pyramid of Doom") occurs when multiple nested callbacks create deeply indented, hard-to-read code. This happens when asynchronous operations depend on each other.
+
+**Problem Example:**
+```javascript
+// ❌ Callback Hell - Hard to read and maintain
+getUser(userId, function(user) {
+  getUserPosts(user.id, function(posts) {
+    getPostComments(posts[0].id, function(comments) {
+      getUserProfile(comments[0].authorId, function(profile) {
+        updateProfile(profile.id, { lastActive: new Date() }, function(result) {
+          console.log('Done!', result);
+          // This is 5 levels deep!
+        });
+      });
+    });
+  });
+});
+```
+
+**Problems with Callback Hell:**
+- ❌ Hard to read and understand
+- ❌ Difficult to debug
+- ❌ Error handling is complex
+- ❌ Easy to make mistakes
+- ❌ Creates horizontal and vertical scrolling
+
+**Solutions:**
+
+**1. Using Promises:**
+```javascript
+// ✅ Using Promises - Flatter and cleaner
+getUser(userId)
+  .then(user => getUserPosts(user.id))
+  .then(posts => getPostComments(posts[0].id))
+  .then(comments => getUserProfile(comments[0].authorId))
+  .then(profile => updateProfile(profile.id, { lastActive: new Date() }))
+  .then(result => console.log('Done!', result))
+  .catch(error => console.error('Error:', error));
+```
+
+**2. Using Async/Await (Best):**
+```javascript
+// ✅ Using async/await - Most readable
+async function updateUserActivity(userId) {
+  try {
+    const user = await getUser(userId);
+    const posts = await getUserPosts(user.id);
+    const comments = await getPostComments(posts[0].id);
+    const profile = await getUserProfile(comments[0].authorId);
+    const result = await updateProfile(profile.id, { lastActive: new Date() });
+    console.log('Done!', result);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+```
+
+**3. Named Functions (Partial Solution):**
+```javascript
+// ✅ Better than nested callbacks
+function handleProfile(profile) {
+  updateProfile(profile.id, { lastActive: new Date() }, handleResult);
+}
+
+function handleComments(comments) {
+  getUserProfile(comments[0].authorId, handleProfile);
+}
+
+function handlePosts(posts) {
+  getPostComments(posts[0].id, handleComments);
+}
+
+function handleUser(user) {
+  getUserPosts(user.id, handlePosts);
+}
+
+getUser(userId, handleUser);
+```
+
+**Key Takeaways:**
+- **Callback Hell** = Deeply nested callbacks that are hard to read
+- **Solution**: Use Promises or async/await for cleaner code
+- Modern JavaScript favors async/await for best readability
+
 ### 11. What are promises and async/await in JavaScript?
 
 **Promise** is an object representing the eventual completion or failure of an asynchronous operation.

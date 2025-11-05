@@ -864,7 +864,252 @@ export const dynamic = 'force-dynamic';
 export const dynamic = 'force-static';
 ```
 
-### 35. What are some best practices for Next.js?
+### 35. What are the design patterns used in Next.js?
+
+Next.js uses several design patterns to build scalable and maintainable full-stack applications.
+
+**1. Server Components Pattern:**
+
+**Definition:** Server Components render on the server by default, reducing client-side JavaScript bundle size. They can directly access databases and APIs without exposing API routes, improving security and performance.
+
+**Benefits:** Reduced bundle size, better security, faster initial load, direct database access.
+
+```tsx
+// app/products/page.tsx (Server Component)
+async function getProducts() {
+  const res = await db.query('SELECT * FROM products');
+  return res.rows;
+}
+
+export default async function ProductsPage() {
+  const products = await getProducts(); // Direct DB access
+  
+  return (
+    <div>
+      {products.map(product => (
+        <div key={product.id}>{product.name}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+**2. Client Component Pattern:**
+
+**Definition:** Components marked with "use client" directive that run in the browser. Used for interactive features requiring browser APIs, event handlers, or React hooks.
+
+**Benefits:** Browser API access, interactivity, hooks support, real-time updates.
+
+```tsx
+// components/Counter.tsx
+'use client';
+
+import { useState } from 'react';
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(count + 1)}>Increment</button>
+    </div>
+  );
+}
+```
+
+**3. Layout Pattern:**
+
+**Definition:** Layouts are shared UI components that wrap pages and persist across navigation. They enable code reuse for common UI elements like headers, footers, and sidebars.
+
+**Benefits:** Code reuse, consistent UI, better performance (layouts don't re-render), nested layouts support.
+
+```tsx
+// app/layout.tsx (Root layout)
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <header>Global Header</header>
+        <main>{children}</main>
+        <footer>Global Footer</footer>
+      </body>
+    </html>
+  );
+}
+
+// app/dashboard/layout.tsx (Nested layout)
+export default function DashboardLayout({ children }) {
+  return (
+    <div>
+      <aside>Dashboard Sidebar</aside>
+      <section>{children}</section>
+    </div>
+  );
+}
+```
+
+**4. Route Handler Pattern (API Routes):**
+
+**Definition:** Route handlers provide backend API functionality within Next.js applications. They handle HTTP methods (GET, POST, etc.) and can perform server-side operations like database queries, authentication, and file operations.
+
+**Benefits:** Full-stack in one framework, type-safe APIs, no separate backend needed, easy deployment.
+
+```ts
+// app/api/users/route.ts
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  const users = await db.query('SELECT * FROM users');
+  return NextResponse.json(users);
+}
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  const user = await createUser(body);
+  return NextResponse.json(user, { status: 201 });
+}
+```
+
+**5. Middleware Pattern:**
+
+**Definition:** Middleware runs before a request is completed, allowing you to modify requests/responses, implement authentication, redirects, and add custom headers at the edge.
+
+**Benefits:** Edge execution, request modification, authentication, performance optimization, A/B testing.
+
+```ts
+// middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  // Authentication check
+  const token = request.cookies.get('token');
+  
+  if (!token && request.nextUrl.pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+  
+  // Add custom header
+  const response = NextResponse.next();
+  response.headers.set('x-custom-header', 'value');
+  return response;
+}
+```
+
+**6. Static Site Generation (SSG) Pattern:**
+
+**Definition:** Pages are pre-rendered at build time, generating static HTML files. This pattern is ideal for content that doesn't change frequently, providing fast page loads and excellent SEO.
+
+**Benefits:** Fastest performance, great SEO, CDN-friendly, cost-effective hosting.
+
+```jsx
+// pages/blog.js
+export async function getStaticProps() {
+  const posts = await fetchPosts();
+  
+  return {
+    props: { posts },
+    revalidate: 3600, // ISR: Regenerate every hour
+  };
+}
+
+export default function Blog({ posts }) {
+  return <div>{/* Render posts */}</div>;
+}
+```
+
+**7. Server-Side Rendering (SSR) Pattern:**
+
+**Definition:** Pages are rendered on the server for each request, providing fresh data on every page load. Ideal for dynamic content that changes frequently or user-specific data.
+
+**Benefits:** Fresh data, SEO-friendly, personalized content, secure server-side operations.
+
+```jsx
+// pages/profile.js
+export async function getServerSideProps(context) {
+  const user = await getUser(context.req);
+  
+  return {
+    props: { user },
+  };
+}
+
+export default function Profile({ user }) {
+  return <div>Welcome, {user.name}</div>;
+}
+```
+
+**8. Incremental Static Regeneration (ISR) Pattern:**
+
+**Definition:** Combines static generation with dynamic updates. Pages are generated at build time but can be regenerated in the background after a specified time interval, keeping content fresh while maintaining performance.
+
+**Benefits:** Best of both worlds (static + dynamic), automatic updates, scalable, cost-effective.
+
+```jsx
+export async function getStaticProps() {
+  const data = await fetchData();
+  
+  return {
+    props: { data },
+    revalidate: 60, // Regenerate every 60 seconds
+  };
+}
+```
+
+**9. Parallel Routes Pattern:**
+
+**Definition:** Allows rendering multiple pages simultaneously in the same layout using slots. Each slot can have its own loading and error states, enabling complex dashboard layouts.
+
+**Benefits:** Independent loading states, flexible layouts, better UX, modular design.
+
+```tsx
+// app/layout.tsx
+export default function Layout({
+  children,
+  team,
+  analytics,
+}: {
+  children: React.ReactNode;
+  team: React.ReactNode;
+  analytics: React.ReactNode;
+}) {
+  return (
+    <div>
+      {children}
+      <div className="grid">
+        {team}
+        {analytics}
+      </div>
+    </div>
+  );
+}
+```
+
+**10. Intercepting Routes Pattern:**
+
+**Definition:** Allows loading a route within the current layout while maintaining the URL. Used for modals, sidebars, and other overlay UI that should appear without changing the URL.
+
+**Benefits:** Modal-like UI, better UX, no URL changes, smooth transitions.
+
+```tsx
+// app/(.)photo/[id]/page.tsx (Intercepting route)
+export default function PhotoModal({ params }) {
+  return <Modal><Photo id={params.id} /></Modal>;
+}
+```
+
+**Key Takeaways:**
+- **Server Components**: Default rendering on server for better performance
+- **Client Components**: For interactivity and browser APIs
+- **Layouts**: Reusable UI structure across pages
+- **Route Handlers**: Backend API functionality
+- **Middleware**: Edge-level request/response manipulation
+- **SSG/SSR/ISR**: Different rendering strategies for different needs
+- **Parallel Routes**: Multiple simultaneous page renders
+- **Intercepting Routes**: Modal/overlay UI patterns
+
+### 36. What are some best practices for Next.js?
 
 - Use Server Components by default, Client Components when needed
 - Implement proper error handling with error.tsx

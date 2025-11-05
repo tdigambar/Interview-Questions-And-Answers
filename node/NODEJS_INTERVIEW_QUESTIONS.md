@@ -2568,6 +2568,396 @@ process.on('SIGINT', async () => {
 
 ---
 
+## Design Patterns in Node.js
+
+### What are the design patterns used in Node.js?
+
+Node.js applications use several design patterns to build scalable, maintainable, and efficient server-side applications.
+
+**1. Module Pattern:**
+
+**Definition:** Node.js uses the CommonJS module system (and ES modules) to organize code into reusable, encapsulated modules. Each file is treated as a separate module with its own scope, preventing global namespace pollution.
+
+**Benefits:** Code organization, reusability, encapsulation, dependency management, easier testing.
+
+```javascript
+// math.js (Module)
+function add(a, b) {
+  return a + b;
+}
+
+function subtract(a, b) {
+  return a - b;
+}
+
+module.exports = {
+  add,
+  subtract
+};
+
+// app.js (Using the module)
+const math = require('./math');
+console.log(math.add(5, 3)); // 8
+```
+
+**2. Callback Pattern:**
+
+**Definition:** The fundamental pattern for handling asynchronous operations in Node.js. Functions accept callbacks as parameters that execute when async operations complete, enabling non-blocking I/O.
+
+**Benefits:** Non-blocking I/O, event-driven programming, scalable I/O operations.
+
+```javascript
+// Callback pattern
+const fs = require('fs');
+
+fs.readFile('file.txt', 'utf8', (err, data) => {
+  if (err) {
+    console.error('Error:', err);
+    return;
+  }
+  console.log('File content:', data);
+});
+```
+
+**3. Event Emitter Pattern:**
+
+**Definition:** Node.js uses the EventEmitter pattern for handling events. Objects emit events and listeners can subscribe to those events, enabling loose coupling and event-driven architecture.
+
+**Benefits:** Decoupled components, event-driven architecture, flexible communication, scalable design.
+
+```javascript
+const EventEmitter = require('events');
+
+class MyEmitter extends EventEmitter {}
+
+const myEmitter = new MyEmitter();
+
+// Listen for event
+myEmitter.on('event', (data) => {
+  console.log('Event received:', data);
+});
+
+// Emit event
+myEmitter.emit('event', 'Hello World');
+```
+
+**4. Stream Pattern:**
+
+**Definition:** Streams handle data in chunks rather than loading everything into memory. They're used for processing large files, network communications, and real-time data processing.
+
+**Benefits:** Memory efficiency, backpressure handling, composability, real-time processing.
+
+```javascript
+const fs = require('fs');
+const { Transform } = require('stream');
+
+// Transform stream
+const upperCase = new Transform({
+  transform(chunk, encoding, callback) {
+    callback(null, chunk.toString().toUpperCase());
+  }
+});
+
+// Pipe streams
+fs.createReadStream('input.txt')
+  .pipe(upperCase)
+  .pipe(fs.createWriteStream('output.txt'));
+```
+
+**5. Middleware Pattern:**
+
+**Definition:** Middleware functions process requests in a chain, each function handling a specific aspect (authentication, logging, parsing) before passing control to the next middleware. Common in frameworks like Express.js.
+
+**Benefits:** Modular request handling, code reuse, separation of concerns, flexible architecture.
+
+```javascript
+// Express middleware pattern
+const express = require('express');
+const app = express();
+
+// Middleware function
+function logger(req, res, next) {
+  console.log(`${req.method} ${req.url}`);
+  next(); // Pass to next middleware
+}
+
+function auth(req, res, next) {
+  const token = req.headers.authorization;
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+}
+
+app.use(logger); // Apply to all routes
+app.get('/api/data', auth, (req, res) => {
+  res.json({ data: 'protected data' });
+});
+```
+
+**6. Factory Pattern:**
+
+**Definition:** A function that creates and returns objects. Used to create instances of objects with different configurations without exposing the creation logic.
+
+**Benefits:** Encapsulation, flexibility, easy object creation, configuration management.
+
+```javascript
+// Factory pattern
+function createUser(name, role) {
+  return {
+    name,
+    role,
+    createdAt: new Date(),
+    permissions: getPermissions(role),
+    greet() {
+      console.log(`Hello, I'm ${this.name}, a ${this.role}`);
+    }
+  };
+}
+
+function getPermissions(role) {
+  const permissions = {
+    admin: ['read', 'write', 'delete'],
+    user: ['read'],
+    guest: []
+  };
+  return permissions[role] || [];
+}
+
+const admin = createUser('John', 'admin');
+const user = createUser('Jane', 'user');
+```
+
+**7. Singleton Pattern:**
+
+**Definition:** Ensures a class has only one instance and provides a global point of access to it. Common for database connections, configuration objects, and logging systems.
+
+**Benefits:** Single instance, global access, resource management, shared state.
+
+```javascript
+// Singleton pattern
+class DatabaseConnection {
+  constructor() {
+    if (DatabaseConnection.instance) {
+      return DatabaseConnection.instance;
+    }
+    
+    this.connection = this.connect();
+    DatabaseConnection.instance = this;
+  }
+  
+  connect() {
+    console.log('Connecting to database...');
+    return { connected: true };
+  }
+  
+  query(sql) {
+    console.log(`Executing: ${sql}`);
+    return { results: [] };
+  }
+}
+
+const db1 = new DatabaseConnection();
+const db2 = new DatabaseConnection();
+console.log(db1 === db2); // true (same instance)
+```
+
+**8. Observer Pattern:**
+
+**Definition:** Objects (observers) subscribe to events from a subject and get notified when events occur. Built into Node.js through EventEmitter and used extensively in event-driven architectures.
+
+**Benefits:** Loose coupling, event-driven programming, scalable architecture, reactive programming.
+
+```javascript
+// Observer pattern using EventEmitter
+const EventEmitter = require('events');
+
+class NewsPublisher extends EventEmitter {
+  publishNews(news) {
+    console.log('Publishing news:', news);
+    this.emit('news', news);
+  }
+}
+
+class NewsSubscriber {
+  constructor(name) {
+    this.name = name;
+  }
+  
+  update(news) {
+    console.log(`${this.name} received: ${news}`);
+  }
+}
+
+const publisher = new NewsPublisher();
+const subscriber1 = new NewsSubscriber('Subscriber 1');
+const subscriber2 = new NewsSubscriber('Subscriber 2');
+
+publisher.on('news', (news) => subscriber1.update(news));
+publisher.on('news', (news) => subscriber2.update(news));
+
+publisher.publishNews('Breaking: Node.js update released!');
+```
+
+**9. Repository Pattern:**
+
+**Definition:** Abstracts data access logic, providing a clean interface between business logic and data layer. Separates data access from business logic, making code more testable and maintainable.
+
+**Benefits:** Separation of concerns, testability, maintainability, database abstraction.
+
+```javascript
+// Repository pattern
+class UserRepository {
+  constructor(db) {
+    this.db = db;
+  }
+  
+  async findById(id) {
+    return await this.db.query('SELECT * FROM users WHERE id = ?', [id]);
+  }
+  
+  async create(userData) {
+    return await this.db.query(
+      'INSERT INTO users (name, email) VALUES (?, ?)',
+      [userData.name, userData.email]
+    );
+  }
+  
+  async update(id, userData) {
+    return await this.db.query(
+      'UPDATE users SET name = ?, email = ? WHERE id = ?',
+      [userData.name, userData.email, id]
+    );
+  }
+  
+  async delete(id) {
+    return await this.db.query('DELETE FROM users WHERE id = ?', [id]);
+  }
+}
+
+// Usage
+const userRepo = new UserRepository(database);
+const user = await userRepo.findById(1);
+```
+
+**10. Dependency Injection Pattern:**
+
+**Definition:** Dependencies are injected into a component rather than created within it. This makes code more testable, flexible, and maintainable by decoupling components from their dependencies.
+
+**Benefits:** Testability, flexibility, loose coupling, easier maintenance.
+
+```javascript
+// Dependency injection pattern
+class UserService {
+  constructor(userRepository, emailService) {
+    this.userRepository = userRepository;
+    this.emailService = emailService;
+  }
+  
+  async createUser(userData) {
+    const user = await this.userRepository.create(userData);
+    await this.emailService.sendWelcomeEmail(user.email);
+    return user;
+  }
+}
+
+// Inject dependencies
+const userRepo = new UserRepository(db);
+const emailService = new EmailService();
+const userService = new UserService(userRepo, emailService);
+```
+
+**11. Strategy Pattern:**
+
+**Definition:** Defines a family of algorithms, encapsulates each one, and makes them interchangeable. Allows selecting an algorithm at runtime, useful for different payment methods, authentication strategies, etc.
+
+**Benefits:** Algorithm selection at runtime, flexibility, open/closed principle, algorithm encapsulation.
+
+```javascript
+// Strategy pattern
+class PaymentProcessor {
+  constructor(strategy) {
+    this.strategy = strategy;
+  }
+  
+  process(amount) {
+    return this.strategy.pay(amount);
+  }
+  
+  setStrategy(strategy) {
+    this.strategy = strategy;
+  }
+}
+
+// Strategies
+const creditCardStrategy = {
+  pay(amount) {
+    console.log(`Paid ${amount} using Credit Card`);
+    return { success: true, method: 'credit-card' };
+  }
+};
+
+const paypalStrategy = {
+  pay(amount) {
+    console.log(`Paid ${amount} using PayPal`);
+    return { success: true, method: 'paypal' };
+  }
+};
+
+// Usage
+const processor = new PaymentProcessor(creditCardStrategy);
+processor.process(100);
+
+processor.setStrategy(paypalStrategy);
+processor.process(200);
+```
+
+**12. Promise Pattern:**
+
+**Definition:** Promises represent the eventual completion (or failure) of an asynchronous operation. They provide a cleaner alternative to callbacks, avoiding callback hell and enabling better error handling.
+
+**Benefits:** Better error handling, avoids callback hell, chainable operations, async/await support.
+
+```javascript
+// Promise pattern
+function fetchUserData(userId) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (userId) {
+        resolve({ id: userId, name: 'John Doe' });
+      } else {
+        reject(new Error('Invalid user ID'));
+      }
+    }, 1000);
+  });
+}
+
+// Using promises
+fetchUserData(1)
+  .then(user => {
+    console.log('User:', user);
+    return fetchUserPosts(user.id);
+  })
+  .then(posts => console.log('Posts:', posts))
+  .catch(error => console.error('Error:', error));
+```
+
+**Key Takeaways:**
+- **Module Pattern**: Code organization and encapsulation
+- **Callback Pattern**: Fundamental async handling
+- **Event Emitter**: Event-driven architecture
+- **Stream Pattern**: Efficient data processing
+- **Middleware Pattern**: Request processing chain
+- **Factory Pattern**: Object creation
+- **Singleton Pattern**: Single instance management
+- **Observer Pattern**: Event subscription
+- **Repository Pattern**: Data access abstraction
+- **Dependency Injection**: Loose coupling
+- **Strategy Pattern**: Algorithm selection
+- **Promise Pattern**: Modern async handling
+
+---
+
 ## Summary
 
 This comprehensive guide covers the essential Node.js interview questions from basic concepts to advanced topics. Key areas to focus on:

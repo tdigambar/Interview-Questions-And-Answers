@@ -1781,7 +1781,185 @@ function FloatExample() {
 
 **Recommendation:** Use CSS Grid (Solution 2) for modern browsers, or inline-block (Solution 1) for broader compatibility.
 
-### 37. What are some best practices in React?
+### 37. How do you build a To-Do List application and optimize re-renders?
+
+Building an optimized To-Do List requires understanding React's rendering behavior and applying optimization techniques to prevent unnecessary re-renders.
+
+**Key Optimization Techniques:**
+
+**1. React.memo for Component Memoization:**
+```jsx
+// Memoized TodoItem - only re-renders when props change
+const TodoItem = memo(({ todo, onToggle, onDelete }) => {
+  return (
+    <li>
+      <input
+        type="checkbox"
+        checked={todo.completed}
+        onChange={() => onToggle(todo.id)}
+      />
+      <span>{todo.text}</span>
+      <button onClick={() => onDelete(todo.id)}>Delete</button>
+    </li>
+  );
+});
+```
+
+**2. useCallback for Function Memoization:**
+```jsx
+function TodoList() {
+  const [todos, setTodos] = useState([]);
+  
+  // Memoized callbacks - same reference across renders
+  const handleToggle = useCallback((id) => {
+    setTodos(prevTodos =>
+      prevTodos.map(todo =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      )
+    );
+  }, []); // Empty deps - function never changes
+  
+  const handleDelete = useCallback((id) => {
+    setTodos(prevTodos => prevTodos.filter(todo => todo.id !== id));
+  }, []);
+  
+  return (
+    <ul>
+      {todos.map(todo => (
+        <TodoItem
+          key={todo.id}
+          todo={todo}
+          onToggle={handleToggle}
+          onDelete={handleDelete}
+        />
+      ))}
+    </ul>
+  );
+}
+```
+
+**3. useMemo for Expensive Calculations:**
+```jsx
+function TodoList() {
+  const [todos, setTodos] = useState([]);
+  const [filter, setFilter] = useState('all');
+  
+  // Memoized filtered todos - only recalculates when dependencies change
+  const filteredTodos = useMemo(() => {
+    switch (filter) {
+      case 'active':
+        return todos.filter(todo => !todo.completed);
+      case 'completed':
+        return todos.filter(todo => todo.completed);
+      default:
+        return todos;
+    }
+  }, [todos, filter]);
+  
+  // Memoized statistics
+  const stats = useMemo(() => ({
+    total: todos.length,
+    active: todos.filter(t => !t.completed).length,
+    completed: todos.filter(t => t.completed).length
+  }), [todos]);
+  
+  return (
+    <div>
+      <p>Total: {stats.total}, Active: {stats.active}, Completed: {stats.completed}</p>
+      {filteredTodos.map(todo => (
+        <TodoItem key={todo.id} todo={todo} />
+      ))}
+    </div>
+  );
+}
+```
+
+**Complete Optimized Example:**
+```jsx
+import React, { useState, useCallback, useMemo, memo } from 'react';
+
+const TodoItem = memo(({ todo, onToggle, onDelete }) => {
+  return (
+    <li>
+      <input
+        type="checkbox"
+        checked={todo.completed}
+        onChange={() => onToggle(todo.id)}
+      />
+      <span style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
+        {todo.text}
+      </span>
+      <button onClick={() => onDelete(todo.id)}>Delete</button>
+    </li>
+  );
+});
+
+function TodoList() {
+  const [todos, setTodos] = useState([]);
+  const [filter, setFilter] = useState('all');
+  
+  const handleAdd = useCallback((text) => {
+    setTodos(prev => [...prev, {
+      id: Date.now(),
+      text,
+      completed: false
+    }]);
+  }, []);
+  
+  const handleToggle = useCallback((id) => {
+    setTodos(prev => prev.map(todo =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    ));
+  }, []);
+  
+  const handleDelete = useCallback((id) => {
+    setTodos(prev => prev.filter(todo => todo.id !== id));
+  }, []);
+  
+  const filteredTodos = useMemo(() => {
+    switch (filter) {
+      case 'active': return todos.filter(t => !t.completed);
+      case 'completed': return todos.filter(t => t.completed);
+      default: return todos;
+    }
+  }, [todos, filter]);
+  
+  return (
+    <div>
+      <TodoForm onAdd={handleAdd} />
+      <div>
+        <button onClick={() => setFilter('all')}>All</button>
+        <button onClick={() => setFilter('active')}>Active</button>
+        <button onClick={() => setFilter('completed')}>Completed</button>
+      </div>
+      <ul>
+        {filteredTodos.map(todo => (
+          <TodoItem
+            key={todo.id}
+            todo={todo}
+            onToggle={handleToggle}
+            onDelete={handleDelete}
+          />
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+**Optimization Benefits:**
+- **React.memo**: Prevents TodoItem from re-rendering when other todos change
+- **useCallback**: Stable function references prevent unnecessary re-renders
+- **useMemo**: Expensive calculations (filtering, stats) only run when needed
+- **Stable keys**: Using `todo.id` helps React efficiently track changes
+- **Functional updates**: `prev => ...` ensures working with latest state
+
+**Performance Impact:**
+- Without optimization: All items re-render when any todo changes
+- With optimization: Only changed items re-render
+- Significant improvement with large lists (100+ todos)
+
+### 38. What are some best practices in React?
 
 - Use functional components and hooks
 - Keep components small and focused

@@ -645,7 +645,188 @@ const [a, b, c] = await Promise.all([task1(), task2(), task3()]);
 - **Use `Promise.all()`** for parallel operations
 - **Use `try-catch`** with async/await for error handling
 
-### 11b. What are handled and unhandled exceptions in promises?
+### 11b. Explain immutability and why it matters
+
+**Immutability** means that data cannot be changed after it's created. Instead of modifying existing data, you create new data structures with the desired changes.
+
+**Why Immutability Matters:**
+
+1. **Predictability**: Data doesn't change unexpectedly
+2. **Debugging**: Easier to track changes and find bugs
+3. **Performance**: Enables shallow equality checks
+4. **React/Framework Compatibility**: Required for proper re-rendering
+5. **Thread Safety**: Prevents race conditions in concurrent code
+
+**Mutable vs Immutable Examples:**
+
+```javascript
+// ❌ MUTABLE - Changes original array
+const numbers = [1, 2, 3];
+numbers.push(4);  // Original array is modified
+console.log(numbers); // [1, 2, 3, 4]
+
+// ✅ IMMUTABLE - Creates new array
+const numbers = [1, 2, 3];
+const newNumbers = [...numbers, 4];  // New array created
+console.log(numbers);    // [1, 2, 3] (unchanged)
+console.log(newNumbers); // [1, 2, 3, 4]
+
+// ❌ MUTABLE - Changes original object
+const user = { name: 'John', age: 30 };
+user.age = 31;  // Original object is modified
+console.log(user); // { name: 'John', age: 31 }
+
+// ✅ IMMUTABLE - Creates new object
+const user = { name: 'John', age: 30 };
+const updatedUser = { ...user, age: 31 };  // New object created
+console.log(user);        // { name: 'John', age: 30 } (unchanged)
+console.log(updatedUser); // { name: 'John', age: 31 }
+```
+
+**Immutable Array Operations:**
+
+```javascript
+const original = [1, 2, 3];
+
+// Adding element
+const withFour = [...original, 4];              // [1, 2, 3, 4]
+const withZero = [0, ...original];              // [0, 1, 2, 3]
+
+// Removing element
+const withoutTwo = original.filter(n => n !== 2); // [1, 3]
+
+// Updating element
+const updated = original.map(n => n === 2 ? 20 : n); // [1, 20, 3]
+
+// Original array remains unchanged
+console.log(original); // [1, 2, 3]
+```
+
+**Immutable Object Operations:**
+
+```javascript
+const original = { name: 'John', age: 30, city: 'NYC' };
+
+// Adding property
+const withEmail = { ...original, email: 'john@example.com' };
+
+// Updating property
+const older = { ...original, age: 31 };
+
+// Removing property
+const { city, ...withoutCity } = original;
+
+// Nested object update
+const user = {
+  name: 'John',
+  address: { city: 'NYC', country: 'USA' }
+};
+
+// Deep update
+const updatedUser = {
+  ...user,
+  address: {
+    ...user.address,
+    city: 'LA'
+  }
+};
+```
+
+**Why It Matters in React:**
+
+```javascript
+// ❌ MUTABLE - React won't detect changes
+function TodoList() {
+  const [todos, setTodos] = useState([{ id: 1, text: 'Task 1' }]);
+  
+  const addTodo = (text) => {
+    todos.push({ id: 2, text });  // Mutating original array
+    setTodos(todos);  // React won't re-render (same reference)
+  };
+}
+
+// ✅ IMMUTABLE - React detects changes
+function TodoList() {
+  const [todos, setTodos] = useState([{ id: 1, text: 'Task 1' }]);
+  
+  const addTodo = (text) => {
+    setTodos([...todos, { id: 2, text }]);  // New array reference
+    // React detects change and re-renders
+  };
+}
+```
+
+**Performance Benefits:**
+
+```javascript
+// Shallow equality check (fast)
+function areEqual(arr1, arr2) {
+  return arr1 === arr2;  // Only checks reference, not contents
+}
+
+const arr1 = [1, 2, 3];
+const arr2 = [1, 2, 3];
+
+console.log(areEqual(arr1, arr2)); // false (different references)
+
+// With immutability, same data = same reference
+const original = [1, 2, 3];
+const copy = original;  // Same reference
+
+console.log(areEqual(original, copy)); // true (same reference)
+```
+
+**Best Practices:**
+
+```javascript
+// ✅ DO: Use spread operator
+const newArray = [...oldArray, newItem];
+const newObject = { ...oldObject, newProp: value };
+
+// ✅ DO: Use map/filter/reduce
+const doubled = numbers.map(n => n * 2);
+const evens = numbers.filter(n => n % 2 === 0);
+
+// ✅ DO: Use Object.assign for multiple updates
+const updated = Object.assign({}, original, { prop1: 1, prop2: 2 });
+
+// ❌ DON'T: Mutate original data
+original.push(item);        // Bad
+original.property = value;  // Bad
+delete original.property;   // Bad
+
+// ❌ DON'T: Use mutable methods
+original.sort();            // Mutates original
+original.reverse();         // Mutates original
+original.splice(0, 1);      // Mutates original
+```
+
+**Deep Immutability with Libraries:**
+
+```javascript
+// Using Immer (popular library)
+import produce from 'immer';
+
+const state = { todos: [{ id: 1, text: 'Task' }] };
+
+const newState = produce(state, draft => {
+  draft.todos.push({ id: 2, text: 'New Task' });
+  draft.todos[0].text = 'Updated Task';
+  // Can write "mutating" code, but it's actually immutable
+});
+
+// Original state unchanged, newState has changes
+```
+
+**Key Takeaways:**
+- **Immutability** = Data doesn't change, new data is created
+- **Benefits**: Predictability, easier debugging, better performance
+- **React**: Requires immutability for proper re-rendering
+- **Methods**: Spread operator, map/filter/reduce, Object.assign
+- **Avoid**: push, pop, sort, reverse, direct property assignment
+- **Libraries**: Immer, Immutable.js for complex immutable updates
+
+### 11c. What are handled and unhandled exceptions in promises?
 
 **Handled Exceptions**: Errors caught using `.catch()` or `try-catch` blocks.
 

@@ -1662,7 +1662,126 @@ function UncontrolledInput() {
 - **Custom Hooks**: Reusable stateful logic
 - **Composition**: Build complex UIs from simple components
 
-### 36. What are some best practices in React?
+### 36. How do you display 5 divs in a row without using flex, margin, or padding?
+
+There are several ways to display multiple divs in a row without using flexbox, margin, or padding.
+
+**Solution 1: Using `display: inline-block` with `font-size: 0`**
+
+```jsx
+function InlineBlockExample() {
+  const containerStyle = {
+    fontSize: 0,  // Removes whitespace between inline-block elements
+    width: '100%'
+  };
+  
+  const divStyle = {
+    display: 'inline-block',
+    width: '20%',
+    backgroundColor: '#e3f2fd',
+    border: '1px solid #2196f3',
+    height: '100px',
+    fontSize: '16px',  // Restore font size for content
+    verticalAlign: 'top',
+    textAlign: 'center',
+    lineHeight: '100px',
+    boxSizing: 'border-box'
+  };
+  
+  return (
+    <div style={containerStyle}>
+      <div style={divStyle}>Div 1</div>
+      <div style={divStyle}>Div 2</div>
+      <div style={divStyle}>Div 3</div>
+      <div style={divStyle}>Div 4</div>
+      <div style={divStyle}>Div 5</div>
+    </div>
+  );
+}
+```
+
+**Key Points:**
+- `fontSize: 0` on parent removes whitespace between inline-block elements
+- Each div gets `width: 20%` (5 divs = 100%)
+- `verticalAlign: 'top'` aligns divs at the top
+- Restore `fontSize` on child divs if they contain text
+
+**Solution 2: Using CSS Grid**
+
+```jsx
+function GridExample() {
+  const containerStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(5, 1fr)',  // 5 equal columns
+    width: '100%'
+  };
+  
+  const divStyle = {
+    backgroundColor: '#f3e5f5',
+    border: '1px solid #9c27b0',
+    height: '100px',
+    textAlign: 'center',
+    lineHeight: '100px',
+    boxSizing: 'border-box'
+  };
+  
+  return (
+    <div style={containerStyle}>
+      <div style={divStyle}>Div 1</div>
+      <div style={divStyle}>Div 2</div>
+      <div style={divStyle}>Div 3</div>
+      <div style={divStyle}>Div 4</div>
+      <div style={divStyle}>Div 5</div>
+    </div>
+  );
+}
+```
+
+**Key Points:**
+- `gridTemplateColumns: 'repeat(5, 1fr)'` creates 5 equal columns
+- No whitespace issues
+- Modern and clean approach
+- No need for `font-size: 0` trick
+
+**Alternative: Using Float (Less Common)**
+
+```jsx
+function FloatExample() {
+  const containerStyle = {
+    overflow: 'hidden'  // Clear float
+  };
+  
+  const divStyle = {
+    float: 'left',
+    width: '20%',
+    backgroundColor: '#fff3e0',
+    border: '1px solid #ff9800',
+    height: '100px',
+    textAlign: 'center',
+    lineHeight: '100px',
+    boxSizing: 'border-box'
+  };
+  
+  return (
+    <div style={containerStyle}>
+      <div style={divStyle}>Div 1</div>
+      <div style={divStyle}>Div 2</div>
+      <div style={divStyle}>Div 3</div>
+      <div style={divStyle}>Div 4</div>
+      <div style={divStyle}>Div 5</div>
+    </div>
+  );
+}
+```
+
+**Why these approaches work:**
+- **Inline-block**: Elements flow horizontally, `font-size: 0` removes whitespace
+- **Grid**: Modern layout system that creates columns automatically
+- **Float**: Older technique, requires clearing with `overflow: hidden`
+
+**Recommendation:** Use CSS Grid (Solution 2) for modern browsers, or inline-block (Solution 1) for broader compatibility.
+
+### 37. What are some best practices in React?
 
 - Use functional components and hooks
 - Keep components small and focused

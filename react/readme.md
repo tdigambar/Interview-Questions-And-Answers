@@ -1418,7 +1418,251 @@ function App() {
 - Detects unexpected side effects
 - Double-invokes functions to find bugs
 
-### 35. What are some best practices in React?
+### 35. What are the design patterns used in React?
+
+React uses several design patterns to build maintainable and reusable applications.
+
+**1. Container/Presentational Components:**
+
+**Definition:** Separates components into two categories:
+- **Presentational Components**: Pure UI components that receive data via props and render it. They don't know where data comes from or how to change it.
+- **Container Components**: Components that handle data fetching, state management, and business logic, then pass data to presentational components.
+
+**Benefits:** Better separation of concerns, easier testing, and improved reusability.
+```jsx
+// Presentational Component (UI only)
+function UserList({ users, onUserClick }) {
+  return (
+    <ul>
+      {users.map(user => (
+        <li key={user.id} onClick={() => onUserClick(user.id)}>
+          {user.name}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Container Component (Logic + Data)
+function UserListContainer() {
+  const [users, setUsers] = useState([]);
+  
+  useEffect(() => {
+    fetch('/api/users').then(res => res.json()).then(setUsers);
+  }, []);
+  
+  const handleUserClick = (id) => {
+    console.log('User clicked:', id);
+  };
+  
+  return <UserList users={users} onUserClick={handleUserClick} />;
+}
+```
+
+**2. Higher-Order Components (HOC):**
+
+**Definition:** A function that takes a component and returns a new enhanced component with additional props or functionality. HOCs allow you to reuse component logic across different components without modifying the original component.
+
+**Benefits:** Code reuse, cross-cutting concerns (auth, logging, data fetching), and separation of logic from UI.
+```jsx
+// HOC adds functionality
+function withLoading(Component) {
+  return function WithLoadingComponent({ isLoading, ...props }) {
+    if (isLoading) return <div>Loading...</div>;
+    return <Component {...props} />;
+  };
+}
+
+const UserListWithLoading = withLoading(UserList);
+```
+
+**3. Render Props Pattern:**
+
+**Definition:** A pattern where a component receives a function as a prop (typically called "render" or "children") that returns React elements. This function receives state/data from the component and uses it to render the UI. The component shares its internal state and logic through this function prop.
+
+**Benefits:** Flexible component composition, shared state/logic, and avoids prop drilling.
+```jsx
+// Component that shares logic via render prop
+function MouseTracker({ render }) {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setPosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+  
+  return render(position);
+}
+
+// Usage
+<MouseTracker render={({ x, y }) => (
+  <p>Mouse position: {x}, {y}</p>
+)} />
+```
+
+**4. Compound Components:**
+
+**Definition:** A pattern where multiple components work together as a cohesive unit. These components share implicit state and communicate with each other, but the user can compose them flexibly. They're typically used for complex UI components like tabs, modals, or dropdowns.
+
+**Benefits:** Flexible API, better encapsulation, and intuitive component structure.
+```jsx
+// Components that work together
+const Tabs = ({ children }) => {
+  const [activeTab, setActiveTab] = useState(0);
+  return <div>{children({ activeTab, setActiveTab })}</div>;
+};
+
+const TabList = ({ children, activeTab, setActiveTab }) => (
+  <div>{children}</div>
+);
+
+const Tab = ({ id, activeTab, setActiveTab, children }) => (
+  <button 
+    onClick={() => setActiveTab(id)}
+    className={activeTab === id ? 'active' : ''}
+  >
+    {children}
+  </button>
+);
+
+// Usage
+<Tabs>
+  {({ activeTab, setActiveTab }) => (
+    <>
+      <TabList activeTab={activeTab} setActiveTab={setActiveTab}>
+        <Tab id={0} activeTab={activeTab} setActiveTab={setActiveTab}>Tab 1</Tab>
+        <Tab id={1} activeTab={activeTab} setActiveTab={setActiveTab}>Tab 2</Tab>
+      </TabList>
+    </>
+  )}
+</Tabs>
+```
+
+**5. Provider Pattern (Context API):**
+
+**Definition:** A pattern that uses React's Context API to share data across multiple components in the component tree without prop drilling. A Provider component wraps the tree and supplies data to all descendant components through Context.
+
+**Benefits:** Avoids prop drilling, global state management, and cleaner component APIs.
+```jsx
+// Create context
+const ThemeContext = createContext();
+
+// Provider component
+function ThemeProvider({ children }) {
+  const [theme, setTheme] = useState('light');
+  
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+// Consumer hook
+function useTheme() {
+  return useContext(ThemeContext);
+}
+```
+
+**6. Custom Hooks Pattern:**
+
+**Definition:** Custom hooks are JavaScript functions that start with "use" and can call other hooks. They encapsulate reusable stateful logic and can be shared across multiple components. Custom hooks allow you to extract component logic into reusable functions.
+
+**Benefits:** Logic reuse, cleaner components, and separation of concerns.
+```jsx
+// Reusable logic as custom hook
+function useLocalStorage(key, initialValue) {
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      return initialValue;
+    }
+  });
+  
+  const setValue = (value) => {
+    try {
+      setStoredValue(value);
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  
+  return [storedValue, setValue];
+}
+
+// Usage
+function App() {
+  const [name, setName] = useLocalStorage('name', '');
+  return <input value={name} onChange={(e) => setName(e.target.value)} />;
+}
+```
+
+**7. Component Composition:**
+
+**Definition:** A pattern where you build complex UIs by combining smaller, simpler components together. Instead of creating monolithic components, you compose them by passing components as props or children, allowing flexible and reusable component structures.
+
+**Benefits:** Reusability, flexibility, easier maintenance, and better code organization.
+```jsx
+// Compose components together
+function Page({ header, sidebar, content, footer }) {
+  return (
+    <div>
+      {header}
+      <div className="layout">
+        {sidebar}
+        {content}
+      </div>
+      {footer}
+    </div>
+  );
+}
+
+// Usage
+<Page
+  header={<Header />}
+  sidebar={<Sidebar />}
+  content={<MainContent />}
+  footer={<Footer />}
+/>
+```
+
+**8. Controlled vs Uncontrolled Components:**
+
+**Definition:** Two approaches for handling form inputs in React:
+- **Controlled Components**: React controls the form data via state. The component's value is controlled by React state, and changes are handled through event handlers.
+- **Uncontrolled Components**: The DOM itself manages the form data. React uses refs to access form values directly from the DOM.
+
+**Benefits:** Controlled components provide more control and validation, while uncontrolled components are simpler for basic use cases.
+```jsx
+// Controlled - React manages state
+function ControlledInput() {
+  const [value, setValue] = useState('');
+  return <input value={value} onChange={(e) => setValue(e.target.value)} />;
+}
+
+// Uncontrolled - DOM manages state
+function UncontrolledInput() {
+  const inputRef = useRef();
+  return <input ref={inputRef} defaultValue="initial" />;
+}
+```
+
+**Key Takeaways:**
+- **Container/Presentational**: Separates logic from UI
+- **HOC**: Enhances components with additional functionality
+- **Render Props**: Shares code via prop function
+- **Compound Components**: Components that work together
+- **Provider**: Shares data via Context API
+- **Custom Hooks**: Reusable stateful logic
+- **Composition**: Build complex UIs from simple components
+
+### 36. What are some best practices in React?
 
 - Use functional components and hooks
 - Keep components small and focused
@@ -1439,4 +1683,4 @@ function App() {
 
 ## Conclusion
 
-These questions cover React fundamentals through advanced concepts and should thoroughly prepare you for a React.js interview! The topics range from basic component structure to advanced patterns like HOCs, custom hooks, and performance optimization techniques that are essential for building modern React applications.
+These questions cover React fundamentals through advanced concepts and should thoroughly prepare you for a React.js interview! The topics range from basic component structure to advanced patterns like HOCs, custom hooks, design patterns, and performance optimization techniques that are essential for building modern React applications.

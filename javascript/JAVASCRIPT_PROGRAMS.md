@@ -268,6 +268,90 @@ console.log(factorialRecursive(5)); // Output: 120
 
 ---
 
+### ✅ Find Sum of Numbers Without For Loop
+
+**Problem:** Calculate the sum of numbers in an array without using a for loop. Use `reduce()` or recursion.
+
+#### 🔄 1️⃣ Using `reduce()` Method
+
+```javascript
+function sumWithReduce(arr) {
+  return arr.reduce((accumulator, currentValue) => {
+    return accumulator + currentValue;
+  }, 0);
+}
+
+// Shorter version
+function sumWithReduce(arr) {
+  return arr.reduce((acc, num) => acc + num, 0);
+}
+
+console.log(sumWithReduce([1, 2, 3, 4, 5])); // Output: 15
+console.log(sumWithReduce([10, 20, 30]));    // Output: 60
+```
+
+**How it works:**
+- `reduce()` iterates through the array
+- Accumulator starts at 0 (initial value)
+- Each element is added to the accumulator
+- Returns the final sum
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(1)
+
+#### 🌀 2️⃣ Using Recursion
+
+```javascript
+function sumWithRecursion(arr, index = 0) {
+  // Base case: if we've processed all elements
+  if (index === arr.length) {
+    return 0;
+  }
+  // Recursive case: add current element + sum of rest
+  return arr[index] + sumWithRecursion(arr, index + 1);
+}
+
+console.log(sumWithRecursion([1, 2, 3, 4, 5])); // Output: 15
+console.log(sumWithRecursion([10, 20, 30]));    // Output: 60
+```
+
+**Alternative Recursive Approach (Using Array Destructuring):**
+
+```javascript
+function sumRecursive([first, ...rest]) {
+  if (first === undefined) return 0;
+  return first + sumRecursive(rest);
+}
+
+console.log(sumRecursive([1, 2, 3, 4, 5])); // Output: 15
+```
+
+**How it works:**
+- Base case: empty array returns 0
+- Recursive case: first element + sum of remaining elements
+- Destructuring approach: `[first, ...rest]` splits array
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(n) — due to recursive call stack
+
+**Examples:**
+
+| Input | Output | Explanation |
+|-------|--------|-------------|
+| `[1, 2, 3, 4, 5]` | `15` | 1+2+3+4+5 = 15 |
+| `[10, 20, 30]` | `60` | 10+20+30 = 60 |
+| `[]` | `0` | Empty array |
+| `[5]` | `5` | Single element |
+
+**Key Takeaways:**
+- **`reduce()`**: Most functional and concise approach
+- **Recursion**: Demonstrates recursive thinking, useful for interview
+- Both approaches avoid traditional for loops
+- `reduce()` is preferred in functional programming
+- Recursion shows understanding of call stack
+
+---
+
 ### ✅ Prime Numbers (1 to 100)
 
 **Problem:** Print all prime numbers from 1 to 100.

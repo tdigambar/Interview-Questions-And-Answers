@@ -19,6 +19,8 @@ Comprehensive collection of common JavaScript interview programming problems wit
 8. [Array Algorithms](#array-algorithms)
    - [Search in Rotated Sorted Array](#-search-in-rotated-sorted-array)
    - [Merge Overlapping Intervals](#-merge-overlapping-intervals)
+   - [Transform Array: Insert Sums Before Large Numbers](#-transform-array-insert-sums-before-large-numbers)
+   - [Transform Array: Subtract Constant and Filter](#-transform-array-subtract-constant-and-filter)
    - [Flatten a Nested Array](#-flatten-a-nested-array)
 9. [Binary Array Problems](#binary-array-problems)
 10. [Dynamic Programming](#dynamic-programming)
@@ -1041,6 +1043,193 @@ console.log(mergeIntervalsComplete([[1,4],[2,3]]));
 
 4. **Q:** What's the time complexity?  
    **A:** O(n log n) due to sorting, which is optimal since we must check all intervals
+
+---
+
+### ✅ Transform Array: Insert Sums Before Large Numbers
+
+**Problem:** Given an array, insert sums of consecutive pairs before large numbers (>10). When a large number is detected 2 positions ahead, insert sums of relevant pairs in descending order.
+
+**Input:** `[3,6,8,1,3,4,22,4,5,7,20]`  
+**Output:** `[3,6,8,1,3,9,7,4,22,4,5,7,12,20]`
+
+**Explanation:** 
+- Before `22` (large number at position 6): Insert `9` (sum of `3+6` from positions 0-1) and `7` (sum of `3+4` from positions 4-5)
+- Before `20` (large number at position 10): Insert `12` (sum of `5+7` from positions 8-9)
+
+#### ⚡ Two-Pass Approach (Optimal)
+
+```javascript
+function transformArray(arr) {
+  const result = [];
+  const insertions = new Map(); // Map: position -> array of values to insert after that position
+  const processedLargeIndices = new Set(); // Track which large numbers we've processed
+  
+  // First pass: identify where to insert
+  for (let i = 0; i < arr.length; i++) {
+    // Check if there's a large number 2 positions ahead (and not already processed)
+    if (i + 2 < arr.length && arr[i + 2] > 10 && arr[i + 1] <= 10 && !processedLargeIndices.has(i + 2)) {
+      processedLargeIndices.add(i + 2);
+      const sums = [];
+      
+      // Sum of (i-2, i-1) if exists
+      if (i >= 2) {
+        const sum1 = arr[i - 2] + arr[i - 1];
+        if (sum1 < arr[i + 2]) {
+          sums.push(sum1);
+        }
+      }
+      
+      // Sum of (i, i+1)
+      const sum2 = arr[i] + arr[i + 1];
+      if (sum2 < arr[i + 2]) {
+        sums.push(sum2);
+      }
+      
+      if (sums.length > 0) {
+        sums.sort((a, b) => b - a); // Descending order
+        // Determine insertion position:
+        // If we have sum from (i-2, i-1), insert at i (before i+1)
+        // If we only have sum from (i, i+1), insert at i+1 (after i+1)
+        const hasEarlySum = i >= 2 && (arr[i - 2] + arr[i - 1]) < arr[i + 2];
+        const insertPos = hasEarlySum ? i : i + 1;
+        insertions.set(insertPos, sums);
+      }
+    }
+    // Check if next number is large (and not already processed)
+    else if (i + 1 < arr.length && arr[i + 1] > 10 && !processedLargeIndices.has(i + 1)) {
+      processedLargeIndices.add(i + 1);
+      if (i >= 1) {
+        const sum = arr[i - 1] + arr[i];
+        if (sum < arr[i + 1]) {
+          // Insert after position i
+          if (!insertions.has(i)) insertions.set(i, []);
+          insertions.get(i).push(sum);
+        }
+      }
+    }
+  }
+  
+  // Second pass: build result with insertions
+  for (let i = 0; i < arr.length; i++) {
+    result.push(arr[i]);
+    
+    // Insert any sums scheduled for after this position
+    if (insertions.has(i)) {
+      result.push(...insertions.get(i));
+    }
+  }
+  
+  return result;
+}
+
+console.log(transformArray([3,6,8,1,3,4,22,4,5,7,20]));
+// Output: [3,6,8,1,3,9,7,4,22,4,5,7,12,20]
+```
+
+**Logic:**
+1. **First Pass**: Scan the array to identify where large numbers (>10) appear
+   - If a large number is 2 positions ahead and the intermediate number is ≤10: calculate sums of pairs
+   - If a large number is immediately next: calculate sum of previous pair
+   - Only insert sums that are less than the large number
+   - Track processed large numbers to avoid duplicates
+
+2. **Second Pass**: Build the result array, inserting sums at the scheduled positions
+
+**Time Complexity:** O(n) — two passes through the array  
+**Space Complexity:** O(n) — for storing insertions map and result array
+
+**Key Points:**
+- Use a two-pass approach to separate detection from insertion
+- Track processed large numbers to avoid duplicate insertions
+- Insert sums in descending order
+- Only insert sums that are less than the target large number
+- Determine insertion position based on which sums are included
+
+**Examples:**
+
+| Input | Output | Explanation |
+|-------|--------|-------------|
+| `[3,6,8,1,3,4,22,4,5,7,20]` | `[3,6,8,1,3,9,7,4,22,4,5,7,12,20]` | Insert `9,7` before `22`, `12` before `20` |
+| `[1,2,3,15,4,5]` | `[1,2,3,15,4,5]` | No insertions (large number immediately follows) |
+| `[5,6,7,8,25]` | `[5,6,7,11,8,25]` | Insert `11` (7+8) before `25` |
+
+---
+
+### ✅ Transform Array: Subtract Constant and Filter
+
+**Problem:** Given a nested array structure containing arrays of objects and single objects, transform each object by subtracting a constant (50) from its mark, and only include objects where the resulting mark is positive.
+
+**Input:** `[ [{name:"xxx", mark:90},{name:"yyy", mark:20}],[{name:"xxx", mark:90},{name:"zz", mark:70}],{name:"zz", mark:60}]`  
+**Output:** `[{name:"xxx", mark:40},{name:"xxx", mark:40},{name:"zz", mark:20},{name:"zz", mark:10}]`
+
+**Explanation:** 
+- Each object's mark is reduced by 50
+- Objects with resulting mark ≤ 0 are filtered out
+- The structure is flattened to a single array
+
+#### ⚡ Solution
+
+```javascript
+function transformArray(input) {
+  const result = [];
+  
+  // Process each element in the input
+  input.forEach(item => {
+    if (Array.isArray(item)) {
+      // For arrays, process each object
+      item.forEach(obj => {
+        const newMark = obj.mark - 50;
+        // Only include if mark is positive
+        if (newMark > 0) {
+          result.push({name: obj.name, mark: newMark});
+        }
+      });
+    } else {
+      // For single objects
+      const newMark = item.mark - 50;
+      if (newMark > 0) {
+        result.push({name: item.name, mark: newMark});
+      }
+    }
+  });
+  
+  return result;
+}
+
+const input = [
+  [{name:"xxx", mark:90},{name:"yyy", mark:20}],
+  [{name:"xxx", mark:90},{name:"zz", mark:70}],
+  {name:"zz", mark:60}
+];
+
+console.log(transformArray(input));
+// Output: [{name:"xxx", mark:40},{name:"xxx", mark:40},{name:"zz", mark:20},{name:"zz", mark:10}]
+```
+
+**Logic:**
+1. Iterate through each element in the input array
+2. **For arrays**: Process each object in the array
+3. **For single objects**: Process the object directly
+4. Subtract 50 from each object's mark
+5. Only include objects where the resulting mark is positive (> 0)
+
+**Time Complexity:** O(n) where n is the total number of objects  
+**Space Complexity:** O(n) for the result array
+
+**Key Points:**
+- Handle both nested arrays and single objects
+- Filter out objects with non-positive marks after transformation
+- Maintain the order of objects as they appear in the input
+- The constant value (50) is subtracted from all marks
+
+**Examples:**
+
+| Input | Output | Explanation |
+|-------|--------|-------------|
+| `[[{name:"xxx",mark:90},{name:"yyy",mark:20}],[{name:"xxx",mark:90},{name:"zz",mark:70}],{name:"zz",mark:60}]` | `[{name:"xxx",mark:40},{name:"xxx",mark:40},{name:"zz",mark:20},{name:"zz",mark:10}]` | Subtract 50, filter positives |
+| `[[{name:"a",mark:100},{name:"b",mark:30}]]` | `[{name:"a",mark:50}]` | `b` filtered out (mark becomes -20) |
+| `[{name:"x",mark:75}]` | `[{name:"x",mark:25}]` | Single object, mark 75 - 50 = 25 |
 
 ---
 

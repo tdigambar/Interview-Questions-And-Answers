@@ -131,7 +131,218 @@ AWS Lambda is a serverless compute service that runs code in response to events 
 - Kinesis (streaming data)
 - Application Load Balancer
 
-### 16. What is RDS?
+### 16. What are the advantages of AWS Lambda?
+
+AWS Lambda provides numerous benefits that make it an attractive choice for serverless computing:
+
+**Cost Efficiency:**
+- Pay only for compute time consumed (per 100ms)
+- No charges when code is not running
+- No upfront costs or infrastructure investment
+- Free tier: 1 million requests and 400,000 GB-seconds per month
+- More cost-effective than maintaining always-on servers for sporadic workloads
+
+**Automatic Scaling:**
+- Automatically scales from zero to thousands of concurrent executions
+- No capacity planning required
+- Handles traffic spikes seamlessly
+- Scales down automatically when demand decreases
+- No manual intervention needed
+
+**No Server Management:**
+- Fully managed service - AWS handles all infrastructure
+- No need to provision, configure, or manage servers
+- No OS patching or security updates required
+- No server monitoring or maintenance overhead
+- Focus on code, not infrastructure
+
+**Event-Driven Architecture:**
+- Native integration with 200+ AWS services
+- Responds to events automatically
+- Perfect for microservices architecture
+- Decouples components for better scalability
+- Enables reactive, event-driven applications
+
+**Fast Deployment:**
+- Quick code deployment and updates
+- Versioning and aliases for safe rollouts
+- Canary deployments supported
+- Easy rollback capabilities
+- Infrastructure as Code (IaC) friendly
+
+**Multiple Language Support:**
+- Native support for Node.js, Python, Java, Go, .NET, Ruby
+- Custom runtimes for other languages
+- Easy to adopt for different teams
+- No need to learn new languages
+
+**High Availability:**
+- Built-in fault tolerance
+- Automatic replication across multiple Availability Zones
+- No single point of failure
+- AWS handles infrastructure redundancy
+
+**Security:**
+- Automatic encryption at rest and in transit
+- Integration with AWS IAM for fine-grained access control
+- VPC support for network isolation
+- Secrets Manager integration
+- Compliance certifications (SOC, PCI, HIPAA, etc.)
+
+**Developer Productivity:**
+- Faster development cycles
+- Less boilerplate code
+- Focus on business logic
+- Rich ecosystem of tools and frameworks
+- Serverless Application Model (SAM) for local testing
+
+**Operational Benefits:**
+- Built-in logging to CloudWatch
+- Integrated monitoring and metrics
+- Automatic error tracking
+- Distributed tracing with X-Ray
+- Reduced operational overhead
+
+**Flexibility:**
+- Supports both synchronous and asynchronous invocations
+- Can be triggered by various event sources
+- Works with containers (up to 10 GB images)
+- Supports custom runtimes
+- Can be used for various use cases (APIs, data processing, automation)
+
+**Global Reach:**
+- Deploy functions in multiple regions
+- Low latency for global applications
+- Lambda@Edge for edge computing
+- Regional failover capabilities
+
+**Integration Ecosystem:**
+- Seamless integration with API Gateway
+- Works with Step Functions for orchestration
+- Integrates with EventBridge for event routing
+- Supports custom integrations via SDK
+
+**Use Cases Where Lambda Excels:**
+- RESTful APIs and web applications
+- Real-time file processing (S3 triggers)
+- Scheduled tasks and cron jobs
+- Data transformation and ETL pipelines
+- Chatbots and voice assistants
+- IoT data processing
+- Real-time stream processing
+- Automated backups and maintenance tasks
+- Image/video processing
+- Authentication and authorization
+- Webhook handlers
+- Microservices architecture
+
+**Best Practices Benefits:**
+- Encourages stateless, modular code
+- Promotes microservices architecture
+- Enables rapid prototyping
+- Supports continuous deployment
+- Facilitates A/B testing
+
+### 17. What are the disadvantages of AWS Lambda?
+
+While AWS Lambda offers many benefits, it has several limitations and disadvantages:
+
+**Execution Time Limits:**
+- Maximum execution time of 15 minutes per invocation
+- Not suitable for long-running processes
+- May require breaking work into smaller chunks or using Step Functions
+
+**Cold Start Latency:**
+- First invocation or after idle period experiences "cold start" delay
+- Can take several seconds to initialize (especially with large deployment packages)
+- Impacts user experience for latency-sensitive applications
+- VPC configuration increases cold start time significantly
+
+**Resource Constraints:**
+- Memory limit: 10,240 MB (10 GB) maximum
+- Ephemeral storage: 512 MB to 10 GB (configurable)
+- CPU power is proportional to memory allocation
+- No direct control over CPU allocation independently
+
+**Deployment Package Size:**
+- 50 MB compressed deployment package limit (direct upload)
+- 250 MB unzipped deployment package limit
+- Larger packages must use S3 or container images
+- Container images: 10 GB maximum
+
+**Concurrency Limits:**
+- Account-level concurrent execution limit (default: 1,000, can be increased)
+- Can cause throttling if limit exceeded
+- Requires careful planning for high-traffic applications
+- Reserved concurrency can limit scaling
+
+**Debugging and Monitoring Challenges:**
+- More difficult to debug compared to traditional servers
+- Limited local testing capabilities
+- Distributed tracing required for complex workflows
+- CloudWatch Logs can be expensive at scale
+
+**Vendor Lock-in:**
+- Tightly coupled to AWS ecosystem
+- Difficult to migrate to other cloud providers
+- AWS-specific APIs and services
+- Limited portability
+
+**Cost Considerations:**
+- Can become expensive at high volumes
+- Pay for every invocation, even failed ones
+- CloudWatch Logs and other services add to costs
+- May be more expensive than EC2 for consistent workloads
+
+**State Management:**
+- Stateless by design
+- Cannot maintain in-memory state between invocations
+- Requires external storage (DynamoDB, S3, ElastiCache) for state
+- Adds complexity and latency
+
+**Limited Control:**
+- No SSH access to execution environment
+- Cannot install system-level dependencies easily
+- Limited control over runtime environment
+- Cannot customize underlying OS
+
+**File System:**
+- Only `/tmp` directory is writable (ephemeral)
+- Limited to 512 MB - 10 GB depending on configuration
+- Data in `/tmp` is lost after function execution
+- Not suitable for large file processing
+
+**Networking:**
+- VPC configuration adds significant cold start latency (10+ seconds)
+- ENI (Elastic Network Interface) limits can cause throttling
+- More complex networking setup required for VPC access
+
+**Language and Runtime Limitations:**
+- Limited to supported runtimes (Node.js, Python, Java, Go, .NET, Ruby, Custom)
+- Runtime versions may lag behind latest language versions
+- Custom runtimes require more setup and maintenance
+
+**Error Handling:**
+- Retry behavior varies by event source
+- Some failures may require manual intervention
+- Dead letter queues needed for proper error handling
+- Partial batch failures in SQS/Kinesis can be complex
+
+**Testing:**
+- Difficult to replicate exact Lambda environment locally
+- Integration testing requires AWS infrastructure
+- Mocking AWS services can be challenging
+- Testing cold starts requires actual AWS environment
+
+**When NOT to use Lambda:**
+- Long-running processes (>15 minutes)
+- Applications requiring persistent connections
+- Real-time applications with strict latency requirements
+- Workloads with predictable, consistent traffic (EC2 may be cheaper)
+- Applications needing fine-grained control over infrastructure
+- Large file processing that exceeds ephemeral storage limits
+
+### 18. What is RDS?
 RDS (Relational Database Service) is a managed relational database service that supports multiple database engines:
 
 - Amazon Aurora
@@ -149,7 +360,7 @@ RDS (Relational Database Service) is a managed relational database service that 
 - Read replicas
 - Multi-AZ deployment
 
-### 17. What is DynamoDB?
+### 19. What is DynamoDB?
 DynamoDB is a fully managed NoSQL database service that provides fast and predictable performance with seamless scalability.
 
 **Features:**
@@ -161,7 +372,7 @@ DynamoDB is a fully managed NoSQL database service that provides fast and predic
 - On-demand and provisioned capacity modes
 - Global tables for multi-region replication
 
-### 18. What is CloudFormation?
+### 20. What is CloudFormation?
 CloudFormation is an Infrastructure as Code (IaC) service that allows you to model and provision AWS resources using templates (JSON or YAML).
 
 **Benefits:**
@@ -188,7 +399,7 @@ Resources:
       InstanceType: t2.micro
 ```
 
-### 19. What is CloudWatch?
+### 21. What is CloudWatch?
 CloudWatch is a monitoring and observability service for AWS resources and applications.
 
 **Features:**
@@ -206,7 +417,7 @@ CloudWatch is a monitoring and observability service for AWS resources and appli
 - Set billing alarms
 - Monitor Lambda execution
 
-### 20. What is Elastic Load Balancer (ELB)?
+### 22. What is Elastic Load Balancer (ELB)?
 ELB automatically distributes incoming application traffic across multiple targets (EC2 instances, containers, IP addresses).
 
 **Types:**
@@ -216,7 +427,7 @@ ELB automatically distributes incoming application traffic across multiple targe
 - **Gateway Load Balancer**: Layer 3, third-party virtual appliances
 - **Classic Load Balancer**: Legacy, Layer 4 and 7
 
-### 21. What is Auto Scaling?
+### 23. What is Auto Scaling?
 Auto Scaling automatically adjusts the number of EC2 instances based on conditions you define.
 
 **Components:**
@@ -232,7 +443,7 @@ Auto Scaling automatically adjusts the number of EC2 instances based on conditio
 - Simple scaling
 - Scheduled scaling
 
-### 22. What is Route 53?
+### 24. What is Route 53?
 Route 53 is AWS's scalable Domain Name System (DNS) web service designed to route end users to internet applications.
 
 **Features:**
@@ -252,7 +463,7 @@ Route 53 is AWS's scalable Domain Name System (DNS) web service designed to rout
 - Geoproximity routing
 - Multi-value answer routing
 
-### 23. What is CloudFront?
+### 25. What is CloudFront?
 
 AWS CloudFront is a global content delivery network (CDN) that caches content like web pages, videos, and images at edge locations closer to users, which speeds up delivery and improves performance. When a user requests content, CloudFront serves it from the nearest edge location. If the content isn't cached there, it fetches it from the origin (like an Amazon S3 bucket or web server), caches it, and then delivers it to the user.
 
@@ -276,7 +487,7 @@ AWS CloudFront is a global content delivery network (CDN) that caches content li
 4. If the content is not in the cache, CloudFront retrieves the definitive version of the content from the origin server (e.g., an S3 bucket or an HTTP server), caches it at the edge location, and then delivers it to the user.
 5. Subsequent requests for the same content from users in that region will be served from the cache
 
-### 24. What is Elastic Beanstalk?
+### 26. What is Elastic Beanstalk?
 Elastic Beanstalk is a PaaS that makes it easy to deploy and scale web applications and services. You upload your code, and Elastic Beanstalk handles deployment, capacity provisioning, load balancing, and auto-scaling.
 
 **Supported platforms:**
@@ -285,7 +496,7 @@ Elastic Beanstalk is a PaaS that makes it easy to deploy and scale web applicati
 - Java, .NET, Go
 - Docker
 
-### 25. What is SNS?
+### 27. What is SNS?
 SNS (Simple Notification Service) is a fully managed pub/sub messaging service for A2A (application-to-application) and A2P (application-to-person) communication.
 
 **Use cases:**
@@ -296,7 +507,7 @@ SNS (Simple Notification Service) is a fully managed pub/sub messaging service f
 - Fan-out messages to SQS queues
 - SMS messages
 
-### 26. What is SQS?
+### 28. What is SQS?
 SQS (Simple Queue Service) is a fully managed message queuing service for decoupling and scaling microservices, distributed systems, and serverless applications.
 
 **Queue types:**
@@ -304,7 +515,7 @@ SQS (Simple Queue Service) is a fully managed message queuing service for decoup
 - **Standard Queue**: Maximum throughput, at-least-once delivery, best-effort ordering
 - **FIFO Queue**: Exactly-once processing, strict ordering
 
-### 27. What is the difference between SNS and SQS?
+### 29. What is the difference between SNS and SQS?
 
 | Feature | SNS | SQS |
 |---------|-----|-----|
@@ -316,7 +527,7 @@ SQS (Simple Queue Service) is a fully managed message queuing service for decoup
 
 ## Advanced Level
 
-### 28. What is AWS Well-Architected Framework?
+### 30. What is AWS Well-Architected Framework?
 The AWS Well-Architected Framework provides best practices for designing and operating reliable, secure, efficient, and cost-effective systems in the cloud.
 
 **Six Pillars:**
@@ -328,7 +539,7 @@ The AWS Well-Architected Framework provides best practices for designing and ope
 5. **Cost Optimization**: Avoid unnecessary costs
 6. **Sustainability**: Minimize environmental impact
 
-### 29. What is Multi-AZ deployment?
+### 31. What is Multi-AZ deployment?
 Multi-AZ deployment provides high availability and failover support by replicating data across multiple Availability Zones.
 
 **Example with RDS:**
@@ -338,7 +549,7 @@ Multi-AZ deployment provides high availability and failover support by replicati
 - Automatic failover in case of failure
 - DNS endpoint remains the same
 
-### 30. What are Read Replicas in RDS?
+### 32. What are Read Replicas in RDS?
 Read Replicas allow you to create read-only copies of your database to improve read performance.
 
 **Features:**
@@ -349,7 +560,7 @@ Read Replicas allow you to create read-only copies of your database to improve r
 - Offload read traffic from primary
 - Up to 5 read replicas per database
 
-### 31. What is AWS VPN?
+### 33. What is AWS VPN?
 AWS VPN solutions connect your on-premises networks to AWS.
 
 **Types:**
@@ -363,7 +574,7 @@ AWS VPN solutions connect your on-premises networks to AWS.
 - Customer Gateway (CGW)
 - VPN Connection
 
-### 32. What is Direct Connect?
+### 34. What is Direct Connect?
 Direct Connect is a dedicated network connection from your premises to AWS, providing more consistent network performance than internet-based connections.
 
 **Benefits:**
@@ -373,7 +584,7 @@ Direct Connect is a dedicated network connection from your premises to AWS, prov
 - Private connectivity
 - Compatible with all AWS services
 
-### 33. What is API Gateway?
+### 35. What is API Gateway?
 API Gateway is a fully managed service for creating, publishing, maintaining, monitoring, and securing APIs at any scale.
 
 **Features:**
@@ -385,7 +596,7 @@ API Gateway is a fully managed service for creating, publishing, maintaining, mo
 - Caching
 - Integration with Lambda, EC2, and other services
 
-### 34. What is ECS vs EKS?
+### 36. What is ECS vs EKS?
 **ECS (Elastic Container Service):**
 
 - AWS-native container orchestration
@@ -400,7 +611,7 @@ API Gateway is a fully managed service for creating, publishing, maintaining, mo
 - More complex but more flexible
 - Portable across clouds
 
-### 35. What is AWS Fargate?
+### 37. What is AWS Fargate?
 Fargate is a serverless compute engine for containers that works with both ECS and EKS. You don't need to provision or manage servers.
 
 **Benefits:**
@@ -410,7 +621,7 @@ Fargate is a serverless compute engine for containers that works with both ECS a
 - Automatic scaling
 - Built-in security
 
-### 36. What is AWS Secrets Manager?
+### 38. What is AWS Secrets Manager?
 Secrets Manager helps you protect access to applications, services, and IT resources by managing secrets (database credentials, API keys, etc.).
 
 **Features:**
@@ -420,7 +631,7 @@ Secrets Manager helps you protect access to applications, services, and IT resou
 - Audit and compliance
 - Encryption at rest
 
-### 37. What is KMS (Key Management Service)?
+### 39. What is KMS (Key Management Service)?
 KMS is a managed service for creating and controlling encryption keys.
 
 **Features:**
@@ -430,7 +641,7 @@ KMS is a managed service for creating and controlling encryption keys.
 - Integrated with CloudTrail for auditing
 - FIPS 140-2 validated
 
-### 38. What is AWS Organizations?
+### 40. What is AWS Organizations?
 AWS Organizations helps you centrally manage and govern multiple AWS accounts.
 
 **Features:**
@@ -441,7 +652,7 @@ AWS Organizations helps you centrally manage and govern multiple AWS accounts.
 - Account management
 - Cost allocation
 
-### 39. What is CloudTrail?
+### 41. What is CloudTrail?
 CloudTrail logs, monitors, and retains account activity related to actions across your AWS infrastructure.
 
 **Use cases:**
@@ -451,7 +662,7 @@ CloudTrail logs, monitors, and retains account activity related to actions acros
 - Operational troubleshooting
 - Risk auditing
 
-### 40. What is AWS Config?
+### 42. What is AWS Config?
 AWS Config continuously monitors and records AWS resource configurations and allows you to automate evaluation against desired configurations.
 
 **Features:**
@@ -461,7 +672,7 @@ AWS Config continuously monitors and records AWS resource configurations and all
 - Change notifications
 - Relationship tracking
 
-### 41. What is disaster recovery in AWS?
+### 43. What is disaster recovery in AWS?
 **DR Strategies (by cost and RTO/RPO):**
 
 1. **Backup and Restore**: Lowest cost, highest RTO/RPO
@@ -480,7 +691,7 @@ AWS Config continuously monitors and records AWS resource configurations and all
    - Full production in multiple regions
    - Traffic distributed across sites
 
-### 42. What is S3 Cross-Region Replication?
+### 44. What is S3 Cross-Region Replication?
 CRR automatically replicates objects across S3 buckets in different AWS regions.
 
 **Use cases:**
@@ -496,7 +707,7 @@ CRR automatically replicates objects across S3 buckets in different AWS regions.
 - Proper IAM permissions
 - Different regions for source and destination
 
-### 43. What is AWS Lambda@Edge?
+### 45. What is AWS Lambda@Edge?
 Lambda@Edge lets you run Lambda functions at CloudFront edge locations to customize content delivery.
 
 **Use cases:**
@@ -507,7 +718,7 @@ Lambda@Edge lets you run Lambda functions at CloudFront edge locations to custom
 - Image transformation
 - Request/response manipulation
 
-### 44. What is AWS Step Functions?
+### 46. What is AWS Step Functions?
 Step Functions is a serverless orchestration service for coordinating multiple AWS services into serverless workflows.
 
 **Features:**
@@ -518,7 +729,7 @@ Step Functions is a serverless orchestration service for coordinating multiple A
 - Parallel execution
 - State management
 
-### 45. What are the best practices for AWS security?
+### 47. What are the best practices for AWS security?
 
 - Use IAM roles instead of access keys
 - Enable MFA for privileged users
@@ -533,7 +744,7 @@ Step Functions is a serverless orchestration service for coordinating multiple A
 - Use VPC for network isolation
 - Enable GuardDuty for threat detection
 
-### 46. How do you optimize AWS costs?
+### 48. How do you optimize AWS costs?
 
 - **Right-size instances**: Match resources to workload
 - **Use Reserved Instances**: For predictable workloads
@@ -546,7 +757,7 @@ Step Functions is a serverless orchestration service for coordinating multiple A
 - **Use CloudWatch**: Monitor and optimize
 - **Leverage AWS Trusted Advisor**: Get recommendations
 
-### 47. What is AWS Transit Gateway?
+### 49. What is AWS Transit Gateway?
 Transit Gateway is a network transit hub that connects VPCs and on-premises networks through a central hub.
 
 **Benefits:**
@@ -556,7 +767,7 @@ Transit Gateway is a network transit hub that connects VPCs and on-premises netw
 - Scalable connectivity
 - Reduced operational overhead
 
-### 48. What is Amazon Aurora?
+### 50. What is Amazon Aurora?
 Aurora is a MySQL and PostgreSQL-compatible relational database built for the cloud.
 
 **Features:**
@@ -568,7 +779,7 @@ Aurora is a MySQL and PostgreSQL-compatible relational database built for the cl
 - Multi-AZ deployment
 - Global database for low-latency global reads
 
-### 49. What is AWS Glue?
+### 51. What is AWS Glue?
 Glue is a fully managed ETL (Extract, Transform, Load) service for preparing data for analytics.
 
 **Features:**
@@ -579,7 +790,7 @@ Glue is a fully managed ETL (Extract, Transform, Load) service for preparing dat
 - Serverless execution
 - Integration with S3, RDS, Redshift
 
-### 50. What is the shared responsibility model in AWS?
+### 52. What is the shared responsibility model in AWS?
 **AWS Responsibility (Security OF the Cloud):**
 
 - Physical infrastructure

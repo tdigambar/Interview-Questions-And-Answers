@@ -131,8 +131,38 @@ Interview-Questions-And-Answers/
 │   ├── package.json           # Dependencies and scripts
 │   ├── tsconfig.json          # TypeScript configuration
 │   └── README.md             # Comprehensive Q&A guide (32 questions)
+├── sql/                       # SQL interview questions and answers
+│   └── SQL_INTERVIEW_QUESTIONS.md  # Comprehensive SQL interview Q&A (25 questions)
 └── README.md                  # This file
 ```
+
+## SQL Topics
+
+### SQL Interview Questions
+
+The `sql/SQL_INTERVIEW_QUESTIONS.md` file contains comprehensive interview questions and answers covering all essential SQL topics from fundamentals to advanced concepts. This is an essential resource for developers preparing for SQL/database interviews.
+
+### What You'll Learn
+
+- **SQL Fundamentals**: DDL, DML, DCL, TCL statements and components
+- **Data Types & Constraints**: Common data types, primary keys, foreign keys, unique constraints
+- **Basic Queries**: SELECT, WHERE, HAVING, ORDER BY, LIMIT
+- **Joins**: INNER, LEFT, RIGHT, FULL OUTER, CROSS, SELF joins
+- **Aggregations**: COUNT, SUM, AVG, MIN, MAX, GROUP BY
+- **Subqueries**: Scalar, row, column, table, and correlated subqueries
+- **Window Functions**: ROW_NUMBER, RANK, LAG, LEAD, partitioning
+- **Performance**: Indexes, query optimization, EXPLAIN plans
+- **Transactions**: ACID properties, isolation levels
+- **Advanced Topics**: Views, stored procedures, normalization, NULL handling
+
+### Key Concepts
+
+- Database design and normalization
+- Query optimization and indexing
+- Transaction management
+- Complex joins and subqueries
+- Window functions and analytics
+- Data integrity and constraints
 
 ## Other Topics
 

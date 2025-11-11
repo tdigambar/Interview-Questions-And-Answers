@@ -137,27 +137,6 @@ function reverseList(head) {
 **Problem:** Check if a string containing `()[]{}` is valid.
 
 ```javascript
-// Approach 1: Using array as stack (Recommended)
-function isValid(s) {
-  const stack = [];
-  const map = { ')': '(', ']': '[', '}': '{' };
-  
-  for (let ch of s) {
-    if (!map[ch]) {
-      stack.push(ch); // Opening bracket
-    } else if (stack.pop() !== map[ch]) {
-      return false; // Mismatched closing bracket
-    }
-  }
-  
-  return stack.length === 0; // All brackets matched
-}
-
-console.log(isValid("{[()]}")); // true
-console.log(isValid("{[(])}")); // false
-console.log(isValid("(((")); // false
-
-// Approach 2: Using custom Stack class
 function isValidParentheses(s) {
   const stack = [];
   const pairs = { '(': ')', '[': ']', '{': '}' };

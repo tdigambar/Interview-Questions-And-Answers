@@ -16,6 +16,7 @@ Comprehensive collection of common JavaScript interview programming problems wit
    - [Reverse a String Without Built-in Methods](#-reverse-a-string-without-built-in-methods)
    - [Palindrome Check](#-palindrome-check)
    - [Count Vowels in String](#-count-vowels-in-string)
+   - [Find First Repeating Character](#-find-first-repeating-character)
 8. [Array Algorithms](#array-algorithms)
    - [Search in Rotated Sorted Array](#-search-in-rotated-sorted-array)
    - [Merge Overlapping Intervals](#-merge-overlapping-intervals)
@@ -601,6 +602,66 @@ console.log(countVowelsRegex("HELLO World")); // Output: 3 (E, O, o)
 | "JavaScript" | 3 | a, a, i |
 | "ChatGPT" | 1 | a |
 | "HELLO" | 2 | E, O |
+
+---
+
+### ✅ Find First Repeating Character
+
+**Problem:** Find the first character that repeats in a string.
+
+**Input:** `"success"`  
+**Output:** `"c"`
+
+---
+
+#### ✅ 1️⃣ Using Set (Optimal)
+
+```javascript
+function findFirstRepeatingChar(str) {
+  const seen = new Set();
+  
+  for (let char of str) {
+    if (seen.has(char)) {
+      return char;
+    }
+    seen.add(char);
+  }
+  
+  return null;
+}
+
+console.log(findFirstRepeatingChar("success")); // "c"
+console.log(findFirstRepeatingChar("hello"));   // "l"
+console.log(findFirstRepeatingChar("abc"));     // null
+```
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(n)
+
+---
+
+#### 🔍 2️⃣ Using Object
+
+```javascript
+function findFirstRepeatingChar(str) {
+  const charCount = {};
+  
+  for (let char of str) {
+    if (charCount[char]) {
+      return char;
+    }
+    charCount[char] = 1;
+  }
+  
+  return null;
+}
+
+console.log(findFirstRepeatingChar("success")); // "c"
+console.log(findFirstRepeatingChar("abc"));     // null
+```
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(n)
 
 ---
 

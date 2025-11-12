@@ -1323,13 +1323,154 @@ if (laptop instanceof PhysicalProduct) {
 
 ### 1. What is the difference between an abstract class and an interface?
 
-| Abstract Class | Interface |
-|----------------|-----------|
-| Can have implementation | Only method signatures (in most languages) |
-| Can have constructors | Cannot have constructors |
-| Can have state (properties) | No state (TypeScript allows properties) |
-| Single inheritance | Multiple interfaces allowed |
-| Use `extends` keyword | Use `implements` keyword |
+**Answer:** Abstract classes and interfaces both help achieve abstraction, but serve different purposes:
+
+**Abstract Class:**
+- Can have constructors
+- Can have properties/state
+- Can have both abstract methods (no implementation) and concrete methods (with implementation)
+- Single inheritance (can extend only one class)
+- Use `extends` keyword
+- Can have access modifiers (private, protected, public)
+
+**Interface:**
+- Cannot have constructors
+- Cannot have state (TypeScript allows properties but no implementation)
+- Only method signatures (no implementation, though TypeScript allows some)
+- Multiple inheritance (can implement multiple interfaces)
+- Use `implements` keyword
+- All members are public by default
+
+**Abstract Class Example:**
+```typescript
+abstract class Animal {
+  protected name: string;
+  
+  constructor(name: string) {
+    this.name = name;
+  }
+  
+  // Abstract method - must be implemented by child
+  abstract makeSound(): void;
+  
+  // Concrete method - has implementation
+  move(): void {
+    console.log(`${this.name} is moving`);
+  }
+}
+
+class Dog extends Animal {
+  makeSound(): void {
+    console.log('Woof!');
+  }
+}
+
+// Cannot do: const animal = new Animal('Pet'); // Error!
+const dog = new Dog('Buddy');
+dog.makeSound(); // Woof!
+dog.move();      // Buddy is moving
+```
+
+**Interface Example:**
+```typescript
+interface Flyable {
+  fly(): void;
+}
+
+interface Swimmable {
+  swim(): void;
+}
+
+// Class can implement multiple interfaces
+class Duck implements Flyable, Swimmable {
+  fly(): void {
+    console.log('Duck is flying');
+  }
+  
+  swim(): void {
+    console.log('Duck is swimming');
+  }
+}
+
+class Airplane implements Flyable {
+  fly(): void {
+    console.log('Airplane is flying');
+  }
+}
+```
+
+**Key Differences Table:**
+
+| Feature | Abstract Class | Interface |
+|---------|----------------|-----------|
+| **Instantiation** | Cannot be instantiated | Cannot be instantiated |
+| **Implementation** | Can have both abstract and concrete methods | Only method signatures |
+| **Constructors** | Can have constructors | Cannot have constructors |
+| **Properties/State** | Can have properties with state | No state (TypeScript allows properties) |
+| **Inheritance** | Single inheritance (`extends`) | Multiple inheritance (`implements`) |
+| **Access Modifiers** | Can have private, protected, public | All members are public |
+| **Use Case** | Share common code among related classes | Define contracts for unrelated classes |
+
+**When to Use Each:**
+
+**Use Abstract Class when:**
+- You want to share common code among related classes
+- You need to provide a base implementation
+- You need constructors or private/protected members
+- Classes have a strong "IS-A" relationship
+
+**Use Interface when:**
+- You want to define a contract for unrelated classes
+- You need multiple inheritance
+- You want to ensure classes follow a specific structure
+- Classes have a "CAN-DO" relationship
+
+**Real-World Example:**
+```typescript
+// Abstract Class - for related classes with shared code
+abstract class Database {
+  protected connectionString: string;
+  
+  constructor(connectionString: string) {
+    this.connectionString = connectionString;
+  }
+  
+  abstract connect(): void;
+  abstract query(sql: string): any[];
+  
+  // Shared implementation
+  log(message: string): void {
+    console.log(`[DB Log]: ${message}`);
+  }
+}
+
+class MySQL extends Database {
+  connect(): void {
+    console.log('Connecting to MySQL...');
+  }
+  
+  query(sql: string): any[] {
+    return [];
+  }
+}
+
+// Interface - for contracts across unrelated classes
+interface Loggable {
+  log(message: string): void;
+}
+
+class User implements Loggable {
+  log(message: string): void {
+    console.log(`User: ${message}`);
+  }
+}
+
+class Product implements Loggable {
+  log(message: string): void {
+    console.log(`Product: ${message}`);
+  }
+}
+```
 
 ### 2. What is the difference between Composition and Inheritance?
 

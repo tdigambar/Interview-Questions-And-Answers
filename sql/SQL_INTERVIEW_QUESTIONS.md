@@ -14,6 +14,7 @@ This comprehensive guide covers essential SQL interview questions from basic con
 8. [Indexes and Performance](#indexes-and-performance)
 9. [Transactions and ACID](#transactions-and-acid)
 10. [Advanced Topics](#advanced-topics)
+    - [Find 3rd Highest Salary](#26-how-do-you-find-the-3rd-highest-salary-from-a-table)
 
 ---
 
@@ -1245,6 +1246,123 @@ SELECT
     COUNT(*) as total_rows,
     COUNT(email) as users_with_email
 FROM users;
+```
+
+### 26. How do you find the 3rd highest salary from a table?
+
+**Answer:** There are multiple approaches to find the nth highest salary. Here are the most common methods:
+
+**Sample Table:**
+```sql
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees VALUES
+(1, 'John', 50000),
+(2, 'Jane', 60000),
+(3, 'Bob', 55000),
+(4, 'Alice', 70000),
+(5, 'Charlie', 60000),
+(6, 'David', 65000);
+```
+
+**Method 1: Using Subquery with DISTINCT and LIMIT/OFFSET (MySQL, PostgreSQL)**
+```sql
+SELECT DISTINCT salary
+FROM employees
+ORDER BY salary DESC
+LIMIT 1 OFFSET 2;
+-- OFFSET 2 means skip first 2 rows, get the 3rd
+```
+
+**Method 2: Using Subquery with COUNT (Works in all databases)**
+```sql
+SELECT salary
+FROM employees e1
+WHERE 2 = (
+    SELECT COUNT(DISTINCT salary)
+    FROM employees e2
+    WHERE e2.salary > e1.salary
+);
+-- Finds salary where exactly 2 salaries are higher
+```
+
+**Method 3: Using Window Functions (ROW_NUMBER)**
+```sql
+SELECT salary
+FROM (
+    SELECT 
+        salary,
+        ROW_NUMBER() OVER (ORDER BY salary DESC) as rn
+    FROM employees
+) ranked
+WHERE rn = 3;
+```
+
+**Method 4: Using Window Functions (DENSE_RANK) - Handles duplicates**
+```sql
+SELECT salary
+FROM (
+    SELECT 
+        salary,
+        DENSE_RANK() OVER (ORDER BY salary DESC) as dr
+    FROM employees
+) ranked
+WHERE dr = 3;
+-- DENSE_RANK handles duplicate salaries better
+```
+
+**Method 5: Using LIMIT with Subquery (MySQL)**
+```sql
+SELECT salary
+FROM employees
+ORDER BY salary DESC
+LIMIT 2, 1;
+-- LIMIT offset, count - skip 2, get 1
+```
+
+**Method 6: Generic solution for nth highest (e.g., 3rd)**
+```sql
+-- For 3rd highest, change 2 to (n-1)
+SELECT salary
+FROM employees e1
+WHERE (3 - 1) = (
+    SELECT COUNT(DISTINCT e2.salary)
+    FROM employees e2
+    WHERE e2.salary > e1.salary
+);
+```
+
+**Comparison:**
+
+| Method | Pros | Cons | Database Support |
+|-------|------|------|------------------|
+| **LIMIT/OFFSET** | Simple, fast | Doesn't handle duplicates well | MySQL, PostgreSQL |
+| **Subquery with COUNT** | Works everywhere, handles duplicates | Can be slower | All databases |
+| **ROW_NUMBER** | Fast, clear | Doesn't handle duplicates | MySQL 8+, PostgreSQL, SQL Server |
+| **DENSE_RANK** | Handles duplicates perfectly | Slightly more complex | MySQL 8+, PostgreSQL, SQL Server |
+
+**Example Results:**
+```
+Salaries: 70000, 65000, 60000, 60000, 55000, 50000
+
+3rd highest = 60000 (using ROW_NUMBER)
+3rd highest = 60000 (using DENSE_RANK - treats duplicates as same rank)
+```
+
+**For nth highest salary (general solution):**
+```sql
+-- Replace 3 with any number n
+SELECT salary
+FROM employees e1
+WHERE (n - 1) = (
+    SELECT COUNT(DISTINCT e2.salary)
+    FROM employees e2
+    WHERE e2.salary > e1.salary
+);
 ```
 
 ---

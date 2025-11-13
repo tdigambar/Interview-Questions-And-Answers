@@ -18,6 +18,7 @@ Comprehensive collection of common JavaScript interview programming problems wit
    - [Count Vowels in String](#-count-vowels-in-string)
    - [Find First Repeating Character](#-find-first-repeating-character)
 8. [Array Algorithms](#array-algorithms)
+   - [Binary Search](#-binary-search)
    - [Search in Rotated Sorted Array](#-search-in-rotated-sorted-array)
    - [Merge Overlapping Intervals](#-merge-overlapping-intervals)
    - [Transform Array: Insert Sums Before Large Numbers](#-transform-array-insert-sums-before-large-numbers)
@@ -774,6 +775,80 @@ console.log(mergeSortedArraysQuick([1, 3, 5, 7], [2, 4, 6, 8]));
 ```
 
 **Time Complexity:** O((n + m) log(n + m))
+
+---
+
+### ✅ Binary Search
+
+**Problem:** Search for a target value in a sorted array using binary search algorithm.
+
+**Input:** `arr = [1, 3, 5, 7, 9, 11, 13]`, `target = 7`  
+**Output:** `3` (index where target is found)
+
+**Note:** Array must be sorted for binary search to work.
+
+---
+
+#### ✅ 1️⃣ Iterative Approach (Optimal)
+
+```javascript
+function binarySearch(arr, target) {
+  let left = 0;
+  let right = arr.length - 1;
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+
+    if (arr[mid] === target) {
+      return mid; // Target found
+    } else if (arr[mid] < target) {
+      left = mid + 1; // Search right half
+    } else {
+      right = mid - 1; // Search left half
+    }
+  }
+
+  return -1; // Target not found
+}
+
+console.log(binarySearch([1, 3, 5, 7, 9, 11, 13], 7)); // 3
+console.log(binarySearch([1, 3, 5, 7, 9, 11, 13], 4)); // -1
+console.log(binarySearch([2, 4, 6, 8, 10], 8)); // 3
+```
+
+**Time Complexity:** O(log n)  
+**Space Complexity:** O(1)
+
+---
+
+#### 🌀 2️⃣ Recursive Approach
+
+```javascript
+function binarySearchRecursive(arr, target, left = 0, right = arr.length - 1) {
+  // Base case: target not found
+  if (left > right) {
+    return -1;
+  }
+
+  const mid = Math.floor((left + right) / 2);
+
+  if (arr[mid] === target) {
+    return mid; // Target found
+  } else if (arr[mid] < target) {
+    // Search right half
+    return binarySearchRecursive(arr, target, mid + 1, right);
+  } else {
+    // Search left half
+    return binarySearchRecursive(arr, target, left, mid - 1);
+  }
+}
+
+console.log(binarySearchRecursive([1, 3, 5, 7, 9, 11, 13], 7)); // 3
+console.log(binarySearchRecursive([1, 3, 5, 7, 9, 11, 13], 4)); // -1
+```
+
+**Time Complexity:** O(log n)  
+**Space Complexity:** O(log n) - due to recursive call stack
 
 ---
 

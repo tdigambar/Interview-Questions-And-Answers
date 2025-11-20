@@ -151,11 +151,62 @@ const buf = Buffer.from('Hello World');
 console.log(buf.toString());
 ```
 
+### 4. What is REPL in Node.js?
+
+**Answer:**
+REPL stands for Read-Eval-Print Loop. It's an interactive programming environment that allows you to execute JavaScript code directly in the terminal without creating a file.
+
+**How to Start:**
+```bash
+$ node
+> 
+```
+
+**Basic Usage:**
+```javascript
+> const x = 10
+> x + 5
+15
+> function add(a, b) { return a + b; }
+> add(5, 3)
+8
+```
+
+**REPL Commands:**
+- `.help` - Show all commands
+- `.exit` - Exit REPL
+- `.clear` - Clear context
+- `.save <file>` - Save session
+- `.load <file>` - Load file
+
+**Special Variables:**
+```javascript
+> 2 + 2
+4
+> _  // Last result
+4
+> _ * 2
+8
+```
+
+**Use Cases:**
+- Quick testing and debugging
+- Learning JavaScript features
+- API testing
+- Experimenting with code
+
+**Custom REPL:**
+```javascript
+const repl = require('repl');
+const r = repl.start({ prompt: 'myapp> ' });
+r.context.name = 'Node.js';  // Available in REPL
+```
+
 ---
 
 ## Event Loop and Asynchronous Programming
 
-### 4. Explain the Node.js Event Loop
+### 5. Explain the Node.js Event Loop
 
 **Answer:**
 The event loop is the core of Node.js's asynchronous behavior. It's a single-threaded loop that continuously checks for events and executes callbacks.
@@ -309,7 +360,65 @@ console.log('Script end');
 - Understanding phases helps predict execution order
 - I/O operations are handled by libuv thread pool
 
-### 5. What's the difference between setImmediate and setTimeout(0)?
+### 6. What is the Reactor Pattern in Node.js?
+
+**Answer:**
+The Reactor Pattern is a design pattern used by Node.js to handle I/O operations efficiently. It's an event-driven architecture that allows a single thread to handle multiple concurrent operations by demultiplexing and dispatching events.
+
+**How it Works:**
+1. **Event Demultiplexer**: Monitors multiple I/O sources (sockets, files)
+2. **Event Queue**: Queues events when I/O operations complete
+3. **Event Loop**: Processes events and executes callbacks
+4. **Handler**: Callback functions that handle events
+
+**Reactor Pattern Flow:**
+```
+Application → Request I/O Operation
+            ↓
+Event Demultiplexer → Monitors I/O sources
+            ↓
+I/O Operation Completes → Event added to queue
+            ↓
+Event Loop → Processes event
+            ↓
+Handler/Callback → Executes callback function
+```
+
+**Example:**
+```javascript
+const fs = require('fs');
+
+// 1. Application requests I/O
+fs.readFile('file.txt', 'utf8', (err, data) => {
+  // 4. Handler executes when I/O completes
+  if (err) throw err;
+  console.log(data);
+});
+
+// 2. Control returns immediately (non-blocking)
+console.log('This runs immediately');
+```
+
+**Benefits:**
+- **Non-blocking**: Single thread handles multiple operations
+- **Scalable**: Can handle thousands of concurrent connections
+- **Efficient**: No thread overhead for I/O operations
+- **Event-driven**: Responds to events as they occur
+
+**Components:**
+- **Event Demultiplexer (libuv)**: Monitors I/O sources
+- **Event Queue**: Queues completed operations
+- **Event Loop**: Processes events and callbacks
+- **Handlers**: Callback functions
+
+**Comparison:**
+| Pattern | Threading Model | Use Case |
+|---------|----------------|----------|
+| **Reactor** | Single thread | I/O-intensive (Node.js) |
+| **Proactor** | Multiple threads | High-performance I/O |
+| **Thread-per-connection** | One thread per connection | Traditional servers |
+
+### 7. What's the difference between setImmediate and setTimeout(0)?
 
 **Answer:**
 
@@ -702,7 +811,7 @@ if (typeof setImmediate === 'undefined') {
 
 **Key Takeaway:** In Node.js, prefer `setImmediate()` for deferring execution, especially within I/O callbacks. Reserve `setTimeout()` for when you actually need a delay.
 
-### 6. What are microtasks and macrotasks?
+### 8. What are microtasks and macrotasks?
 
 **Answer:**
 
@@ -740,7 +849,7 @@ console.log('7. Sync End');
 // 3. setImmediate
 ```
 
-### 7. How do you handle blocking operations in Node.js?
+### 9. How do you handle blocking operations in Node.js?
 
 **Answer:**
 
@@ -1214,7 +1323,7 @@ setInterval(() => {
 
 ## Modules and Package Management
 
-### 8. Explain the module system in Node.js
+### 10. Explain the module system in Node.js
 
 **Answer:**
 Node.js uses CommonJS module system by default, with support for ES modules.
@@ -1264,7 +1373,7 @@ console.log(add(5, 3));             // 8
 console.log(subtract(10, 4));       // 6
 ```
 
-### 9. What is the difference between require() and import?
+### 11. What is the difference between require() and import?
 
 **Answer:**
 
@@ -1296,7 +1405,7 @@ import * as path from 'path';
 const module = await import('./module.mjs');
 ```
 
-### 10. How does npm work and what are the different types of dependencies?
+### 12. How does npm work and what are the different types of dependencies?
 
 **Answer:**
 npm (Node Package Manager) is the default package manager for Node.js.
@@ -1334,7 +1443,7 @@ npm run script-name           # Run npm script
 
 ## Streams and Buffers
 
-### 11. What are streams in Node.js?
+### 13. What are streams in Node.js?
 
 **Answer:**
 Streams are objects that let you read data from a source or write data to a destination in a continuous fashion. They process data piece by piece (chunks) instead of loading everything into memory.
@@ -1585,7 +1694,7 @@ fs.createReadStream('data.csv')
 - **Composability**: Chain operations easily
 - **Backpressure**: Automatic flow control
 
-### 12. What is a Buffer in Node.js?
+### 14. What is a Buffer in Node.js?
 
 **Answer:**
 Buffer is a global class in Node.js for handling binary data. It's similar to an array of integers but corresponds to raw memory allocation.
@@ -1621,7 +1730,7 @@ console.log(combined.toString());        // 'Hello World'
 
 ## File System Operations
 
-### 13. How do you handle file operations in Node.js?
+### 15. How do you handle file operations in Node.js?
 
 **Answer:**
 Node.js provides both synchronous and asynchronous file operations through the `fs` module.
@@ -1685,7 +1794,7 @@ await fsPromises.rmdir('directory');
 
 ## HTTP and Web Servers
 
-### 14. How do you create an HTTP server in Node.js?
+### 16. How do you create an HTTP server in Node.js?
 
 **Answer:**
 Node.js provides the built-in `http` module for creating HTTP servers.
@@ -1747,7 +1856,7 @@ const server = http.createServer((req, res) => {
 });
 ```
 
-### 15. What is middleware in Express.js?
+### 17. What is middleware in Express.js?
 
 **Answer:**
 Middleware functions are functions that have access to the request object (req), response object (res), and the next middleware function in the application's request-response cycle.
@@ -1793,7 +1902,7 @@ app.use((err, req, res, next) => {
 
 ## Error Handling
 
-### 16. How do you handle errors in Node.js?
+### 18. How do you handle errors in Node.js?
 
 **Answer:**
 Node.js provides several mechanisms for error handling.
@@ -1866,7 +1975,7 @@ process.on('SIGTERM', () => {
 
 ## Performance and Optimization
 
-### 17. How do you optimize Node.js performance?
+### 19. How do you optimize Node.js performance?
 
 **Answer:**
 Several strategies can improve Node.js performance:
@@ -2127,7 +2236,7 @@ setInterval(() => {
 
 ## Security
 
-### 18. What is CORS and how do you handle it in Node.js?
+### 20. What is CORS and how do you handle it in Node.js?
 
 **Answer:**
 
@@ -2213,7 +2322,7 @@ app.use(cors(corsOptions));
 - Enable `credentials: true` only for trusted origins
 - CORS handles preflight OPTIONS requests automatically
 
-### 19. What are common security vulnerabilities in Node.js applications?
+### 21. What are common security vulnerabilities in Node.js applications?
 
 **Answer:**
 Common security issues and their solutions:
@@ -2279,7 +2388,7 @@ https.createServer(options, app).listen(443);
 
 ## Testing
 
-### 20. How do you test Node.js applications?
+### 22. How do you test Node.js applications?
 
 **Answer:**
 Testing strategies for Node.js applications:
@@ -2356,7 +2465,7 @@ describe('File operations', () => {
 
 ## Advanced Topics
 
-### 21. What are the differences between child_process, cluster, and worker_threads?
+### 23. What are the differences between child_process, cluster, and worker_threads?
 
 **Answer:**
 
@@ -2422,7 +2531,7 @@ if (isMainThread) {
 }
 ```
 
-### 22. How do you implement caching in Node.js?
+### 24. How do you implement caching in Node.js?
 
 **Answer:**
 Several caching strategies for Node.js applications:
@@ -2500,7 +2609,7 @@ async function getCachedData(key) {
 }
 ```
 
-### 23. How do you handle database connections in Node.js?
+### 25. How do you handle database connections in Node.js?
 
 **Answer:**
 Database connection management strategies:

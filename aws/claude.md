@@ -463,29 +463,106 @@ Route 53 is AWS's scalable Domain Name System (DNS) web service designed to rout
 - Geoproximity routing
 - Multi-value answer routing
 
-### 25. What is CloudFront?
+### 25. What are CDN Servers and AWS CloudFront?
 
-AWS CloudFront is a global content delivery network (CDN) that caches content like web pages, videos, and images at edge locations closer to users, which speeds up delivery and improves performance. When a user requests content, CloudFront serves it from the nearest edge location. If the content isn't cached there, it fetches it from the origin (like an Amazon S3 bucket or web server), caches it, and then delivers it to the user.
+**Answer:**
 
-**Key Features and Benefits:**
+**CDN (Content Delivery Network):**
+A CDN is a network of distributed servers that deliver web content to users based on their geographic location. It reduces latency by serving content from servers closest to the user.
 
-- **Accelerated content delivery**: By storing copies of content in multiple data centers around the world, CloudFront significantly reduces latency and improves loading times for users.
-- **Global network**: It uses a worldwide network of data centers called "edge locations" to deliver content from the location that provides the lowest latency for each user.
-- **Content types**: It can deliver a wide range of content, including static and dynamic web content, large files, software updates, and live and on-demand video streaming.
-- **Scalability and reliability**: CloudFront automatically scales to handle high traffic volumes and provides data redundancy, which improves reliability.
-- **Integration with other AWS services**: It integrates seamlessly with other AWS services like Amazon S3 and AWS WAF for security.
-- **Programmable at the edge**: Through features like CloudFront Functions and AWS Lambda@Edge, you can run code at edge locations for tasks like URL rewrites, header manipulation, and more, with minimal latency.
-- **DDoS protection**: Built-in protection against distributed denial-of-service attacks.
-- **SSL/TLS encryption**: Secure content delivery with HTTPS support.
-- **Real-time metrics**: Monitor performance and usage patterns through CloudWatch.
+**How CDN Works:**
+1. User requests content
+2. Request routed to nearest edge server
+3. If cached, content served immediately
+4. If not cached, fetched from origin, cached, then served
+5. Subsequent requests served from cache
 
-**How It Works:**
+**Benefits of CDN:**
+- **Reduced Latency**: Content served from nearby servers
+- **Lower Bandwidth Costs**: Reduces origin server load
+- **Improved Availability**: Multiple servers provide redundancy
+- **Better Performance**: Faster page load times
+- **DDoS Protection**: Distributes traffic across servers
 
-1. A user requests content from a website or application.
-2. CloudFront routes the request to the edge location that is geographically closest to the user, providing the lowest latency.
-3. If the content is already stored in that edge location's cache, CloudFront delivers it to the user immediately.
-4. If the content is not in the cache, CloudFront retrieves the definitive version of the content from the origin server (e.g., an S3 bucket or an HTTP server), caches it at the edge location, and then delivers it to the user.
-5. Subsequent requests for the same content from users in that region will be served from the cache
+**AWS CloudFront:**
+CloudFront is AWS's global CDN service that integrates with other AWS services.
+
+**Key Features:**
+- **Edge Locations**: 400+ edge locations worldwide
+- **Multiple Origins**: S3, EC2, ALB, custom origins
+- **Caching**: Configurable TTL (Time To Live)
+- **HTTPS**: SSL/TLS encryption
+- **Lambda@Edge**: Run code at edge locations
+- **CloudFront Functions**: Lightweight edge computing
+- **WAF Integration**: Web application firewall
+- **Real-time Logs**: CloudWatch integration
+
+**CloudFront Distribution Types:**
+
+**1. Web Distribution:**
+- Static and dynamic content
+- HTTP/HTTPS
+- Custom error pages
+
+**2. RTMP Distribution:**
+- Media streaming
+- Adobe Flash Media Server
+
+**Example:**
+```bash
+# Create CloudFront distribution
+aws cloudfront create-distribution \
+  --origin-domain-name example.s3.amazonaws.com \
+  --default-root-object index.html
+```
+
+**CloudFront Configuration:**
+```json
+{
+  "Origins": {
+    "S3-origin": {
+      "DomainName": "example.s3.amazonaws.com",
+      "S3OriginConfig": {
+        "OriginAccessIdentity": ""
+      }
+    }
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "S3-origin",
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  }
+}
+```
+
+**Cache Behaviors:**
+- **TTL Settings**: Control how long content is cached
+- **Query String Handling**: Cache based on query parameters
+- **Cookie Forwarding**: Forward cookies to origin
+- **Header Forwarding**: Forward headers to origin
+
+**Lambda@Edge:**
+```javascript
+// Run code at edge locations
+exports.handler = async (event) => {
+  const request = event.Records[0].cf.request;
+  
+  // Modify request
+  request.headers['x-custom-header'] = [{
+    key: 'X-Custom-Header',
+    value: 'custom-value'
+  }];
+  
+  return request;
+};
+```
+
+**Use Cases:**
+- Static website hosting
+- Video streaming
+- API acceleration
+- Software distribution
+- Live streaming events
 
 ### 26. What is Elastic Beanstalk?
 Elastic Beanstalk is a PaaS that makes it easy to deploy and scale web applications and services. You upload your code, and Elastic Beanstalk handles deployment, capacity provisioning, load balancing, and auto-scaling.

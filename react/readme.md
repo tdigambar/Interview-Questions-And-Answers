@@ -7,6 +7,8 @@ A comprehensive collection of React.js interview questions covering basic to adv
 - [Basic Level](#basic-level)
 - [Intermediate Level](#intermediate-level)
 - [Advanced Level](#advanced-level)
+  - [Offline Browsing Implementation](#40-how-do-you-implement-offline-browsing-in-react)
+  - [Vite vs Webpack](#42-what-is-vite-what-is-webpack-what-is-the-difference)
 
 ---
 
@@ -640,7 +642,57 @@ const MyComponent = React.memo(
 );
 ```
 
-### 25. What is forwardRef in React and how does it work?
+### 25. How do we prevent unnecessary re-renders of child components? What strategies does React provide for optimizing this?
+
+**Answer:**
+React provides several strategies to prevent unnecessary re-renders:
+
+**1. React.memo:**
+Prevents re-renders when props haven't changed.
+
+```jsx
+const Child = React.memo(({ name }) => {
+  return <div>{name}</div>;
+});
+```
+
+**2. useCallback:**
+Memoizes functions to prevent new function references.
+
+```jsx
+const handleClick = useCallback(() => {
+  console.log('clicked');
+}, []);
+
+return <Child onClick={handleClick} />;
+```
+
+**3. useMemo:**
+Memoizes values to prevent new object/array references.
+
+```jsx
+const user = useMemo(() => ({ name: 'John', age: 30 }), []);
+return <Child user={user} />;
+```
+
+**4. Split Components:**
+Isolate frequently changing state.
+
+```jsx
+// Separate state into wrapper components
+function CounterWrapper() {
+  const [count, setCount] = useState(0);
+  return <Counter count={count} />;
+}
+```
+
+**Best Practices:**
+- Use `React.memo` for expensive components
+- Use `useCallback` for functions passed as props
+- Use `useMemo` for objects/arrays passed as props
+- Split components to isolate state changes
+
+### 26. What is forwardRef in React and how does it work?
 
 `forwardRef` allows a component to expose a DOM node or component instance to its parent via a ref. By default, refs only work on DOM elements, not custom components.
 
@@ -727,7 +779,7 @@ Button.displayName = 'Button';
 
 ---
 
-### 26. What are Code Splitting and Lazy Loading in React?
+### 27. What are Code Splitting and Lazy Loading in React?
 
 **Code Splitting** is the process of splitting your application's bundle into smaller chunks that can be loaded on demand, reducing the initial load time.
 
@@ -1275,7 +1327,7 @@ const LazyComponent = lazy(() => lazyWithRetry(() => import('./Component')));
 - ✅ Preload components when user intent is clear
 - ✅ Monitor and analyze your bundle sizes
 
-### 26. What is Error Boundary?
+### 28. What is Error Boundary?
 
 Error boundaries catch JavaScript errors in child components and display fallback UI.
 
@@ -1313,7 +1365,7 @@ function App() {
 }
 ```
 
-### 27. What is the difference between React Router's Link and anchor tag?
+### 29. What is the difference between React Router's Link and anchor tag?
 
 - **`<Link>`**: Prevents full page reload, uses client-side routing
 - **`<a>`**: Causes full page reload, server request
@@ -1328,7 +1380,7 @@ import { Link } from 'react-router-dom';
 <a href="/about">About</a>
 ```
 
-### 28. What are Portals in React?
+### 30. What are Portals in React?
 
 Portals render children into a DOM node outside the parent component hierarchy.
 
@@ -1345,7 +1397,7 @@ function Modal({ children }) {
 }
 ```
 
-### 29. What is the difference between createElement and cloneElement?
+### 31. What is the difference between createElement and cloneElement?
 
 **createElement:** Creates a new React element
 
@@ -1360,7 +1412,7 @@ const element = <button>Click</button>;
 const cloned = React.cloneElement(element, { onClick: handleClick });
 ```
 
-### 30. What are some React performance optimization techniques?
+### 32. What are some React performance optimization techniques?
 
 - Use `React.memo` for component memoization
 - Use `useMemo` for expensive calculations
@@ -1375,16 +1427,16 @@ const cloned = React.cloneElement(element, { onClick: handleClick });
 - Optimize images and assets
 - Use React DevTools Profiler
 
-### 31. What is the difference between componentWillMount and componentDidMount?
+### 33. What is the difference between componentWillMount and componentDidMount?
 
 - **componentWillMount** (deprecated): Called before mounting, not recommended
 - **componentDidMount**: Called after component is mounted, ideal for API calls, subscriptions
 
-### 32. What is reconciliation in React?
+### 34. What is reconciliation in React?
 
 Reconciliation is the process React uses to diff the virtual DOM with the previous version and update only changed parts of the real DOM efficiently using a diffing algorithm.
 
-### 33. What are Synthetic Events in React?
+### 35. What are Synthetic Events in React?
 
 Synthetic Events are React's cross-browser wrapper around native browser events, providing consistent API across browsers.
 
@@ -1395,7 +1447,7 @@ function handleClick(e) {
 }
 ```
 
-### 34. What is StrictMode in React?
+### 36. What is StrictMode in React?
 
 StrictMode helps identify potential problems during development.
 
@@ -1418,7 +1470,7 @@ function App() {
 - Detects unexpected side effects
 - Double-invokes functions to find bugs
 
-### 35. What are the design patterns used in React?
+### 37. What are the design patterns used in React?
 
 React uses several design patterns to build maintainable and reusable applications.
 
@@ -1662,7 +1714,7 @@ function UncontrolledInput() {
 - **Custom Hooks**: Reusable stateful logic
 - **Composition**: Build complex UIs from simple components
 
-### 36. How do you display 5 divs in a row without using flex, margin, or padding?
+### 38. How do you display 5 divs in a row without using flex, margin, or padding?
 
 There are several ways to display multiple divs in a row without using flexbox, margin, or padding.
 
@@ -1781,7 +1833,7 @@ function FloatExample() {
 
 **Recommendation:** Use CSS Grid (Solution 2) for modern browsers, or inline-block (Solution 1) for broader compatibility.
 
-### 37. How do you build a To-Do List application and optimize re-renders?
+### 39. How do you build a To-Do List application and optimize re-renders?
 
 Building an optimized To-Do List requires understanding React's rendering behavior and applying optimization techniques to prevent unnecessary re-renders.
 
@@ -1959,7 +2011,220 @@ function TodoList() {
 - With optimization: Only changed items re-render
 - Significant improvement with large lists (100+ todos)
 
-### 38. What are some best practices in React?
+### 40. How do you implement offline browsing in React?
+
+**Answer:** Offline browsing in React is achieved through **Progressive Web Apps (PWA)** using **Service Workers** and caching strategies. This allows your app to work without an internet connection by storing resources locally and serving them when the network is unavailable.
+
+**How It Works:**
+
+1. **Service Worker**: A JavaScript file that runs in the background, separate from your web page. It acts as a proxy between your app and the network, intercepting requests and serving cached responses when offline.
+
+2. **Caching**: Resources (HTML, CSS, JS, images, API responses) are stored in the browser's Cache API. The service worker decides when to use cached data vs. fetching from the network.
+
+3. **Manifest File**: Defines your app as installable and provides metadata for "Add to Home Screen" functionality.
+
+**Key Concepts:**
+
+- **Service Workers** run on a separate thread and can work even when the page is closed
+- **Cache API** provides persistent storage that survives page refreshes
+- **Event-driven**: Service workers respond to install, activate, and fetch events
+- **Lifecycle**: Install → Activate → Fetch (intercepting network requests)
+
+#### 1. Service Worker Setup
+
+**Create `public/sw.js`:**
+
+```javascript
+const CACHE_NAME = 'my-app-v1';
+const urlsToCache = ['/', '/static/css/main.css', '/static/js/main.js'];
+
+// Install: Cache resources when service worker is first installed
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
+  );
+});
+
+// Fetch: Intercept network requests, serve from cache if offline
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request).then((response) => 
+      response || fetch(event.request)
+    )
+  );
+});
+
+// Activate: Clean up old caches when new service worker activates
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((names) =>
+      Promise.all(names.map((name) => 
+        name !== CACHE_NAME && caches.delete(name)
+      ))
+    )
+  );
+});
+```
+
+**Explanation:**
+- **Install event**: Runs once when the service worker is first registered. Caches critical resources immediately.
+- **Fetch event**: Intercepts every network request. Checks cache first, falls back to network if not found.
+- **Activate event**: Runs when a new service worker takes control. Deletes old caches to free up space.
+
+#### 2. Register Service Worker
+
+**In `src/index.js`:**
+
+```jsx
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => console.log('SW registered'))
+      .catch((err) => console.log('SW registration failed', err));
+  });
+}
+```
+
+**Explanation:** Service workers must be registered from the main thread. We wait for the page to load to avoid blocking initial rendering. The registration is asynchronous and returns a promise.
+
+#### 3. Web App Manifest
+
+**Create `public/manifest.json`:**
+
+```json
+{
+  "short_name": "My App",
+  "name": "My React App",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "icons": [
+    { "src": "logo192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "logo512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+```
+
+**Add to `public/index.html`:**
+
+```html
+<link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+<meta name="theme-color" content="#000000" />
+```
+
+**Explanation:** The manifest makes your app installable. It defines how the app appears when added to the home screen, what icon to use, and the start URL. The theme-color meta tag sets the browser UI color.
+
+#### 4. Offline Detection Hook
+
+```jsx
+function useOnlineStatus() {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  return isOnline;
+}
+```
+
+**Explanation:** `navigator.onLine` gives the initial status, but it's not always reliable. The `online` and `offline` events fire when the browser detects network changes. This hook provides a reactive way to track connectivity in your components.
+
+#### 5. Caching Strategies
+
+**Cache First (for static assets):**
+- Check cache first, use if found
+- Only fetch from network if not in cache
+- Best for: Images, fonts, CSS, JS files that rarely change
+
+**Network First (for API calls):**
+- Try network first, fall back to cache if offline
+- Updates cache with fresh data when online
+- Best for: API responses, dynamic content that changes frequently
+
+**Example:**
+
+```javascript
+// Cache First for images
+self.addEventListener('fetch', (event) => {
+  if (event.request.destination === 'image') {
+    event.respondWith(
+      caches.match(event.request).then((cached) =>
+        cached || fetch(event.request).then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return response;
+        })
+      )
+    );
+  }
+});
+```
+
+**Explanation:** For images, we prioritize cache (faster) but still fetch and cache new images for future use. This provides instant loading for previously viewed images while keeping the cache updated.
+
+#### 6. Using Workbox (Recommended)
+
+**Workbox** is a library that simplifies service worker implementation with pre-built strategies.
+
+**Install:**
+```bash
+npm install workbox-webpack-plugin --save-dev
+```
+
+**Configure:**
+```javascript
+// webpack.config.js
+const WorkboxPlugin = require('workbox-webpack-plugin');
+
+module.exports = {
+  plugins: [
+    new WorkboxPlugin.GenerateSW({
+      clientsClaim: true,
+      skipWaiting: true,
+      runtimeCaching: [{
+        urlPattern: /^https:\/\/api\./,
+        handler: 'NetworkFirst',
+        options: { cacheName: 'api-cache', expiration: { maxEntries: 50 } }
+      }]
+    })
+  ]
+};
+```
+
+**Explanation:** Workbox generates a service worker automatically with best practices. `clientsClaim` makes the new service worker take control immediately. `skipWaiting` activates it without waiting for all tabs to close. Runtime caching defines how different URL patterns should be cached.
+
+**Key Points:**
+
+- ✅ **Service Workers** run in the background and intercept network requests
+- ✅ **Cache API** stores resources locally for offline access
+- ✅ **Cache First** for static assets (images, CSS, JS) - prioritize speed
+- ✅ **Network First** for dynamic content (APIs) - prioritize freshness
+- ✅ **Manifest.json** enables "Add to Home Screen" functionality
+- ✅ **Workbox** simplifies implementation with pre-built strategies
+- ✅ Test in Chrome DevTools → Application → Service Workers → Offline checkbox
+
+**Best Practices:**
+
+1. **Cache critical resources** on install for instant offline access
+2. **Use appropriate strategies** - Cache First for assets, Network First for APIs
+3. **Version your caches** - Update CACHE_NAME when app updates to clear old caches
+4. **Show offline indicator** - Inform users when they're offline
+5. **Sync when online** - Queue actions while offline, sync when connection returns
+6. **Limit cache size** - Set maxEntries and maxAgeSeconds to prevent unlimited growth
+7. **Handle errors gracefully** - Provide fallback UI when cache and network both fail
+
+### 41. What are some best practices in React?
 
 - Use functional components and hooks
 - Keep components small and focused
@@ -1975,6 +2240,101 @@ function TodoList() {
 - Use ESLint and Prettier
 - Follow consistent folder structure
 - Document complex components
+
+### 42. What is Vite? What is Webpack? What is the difference?
+
+**Answer:**
+
+#### Vite
+
+Vite is a modern, fast build tool created by Evan You (Vue.js creator). It's designed for speed and better developer experience.
+
+**How it works:**
+- Uses **native ES modules** in the browser during development
+- No bundling needed in dev mode — serves files directly
+- Only transforms files on-demand when browser requests them
+- Uses **esbuild** (extremely fast, written in Go) for pre-bundling dependencies
+- Uses **Rollup** for production builds
+
+**Key benefits:**
+- ⚡ Instant server start (< 1 second)
+- ⚡ Near-instant Hot Module Replacement (HMR)
+- Minimal configuration required
+- Built-in TypeScript, JSX, CSS support
+
+#### Webpack
+
+Webpack is a powerful, mature module bundler that has been the industry standard for years. It bundles JavaScript, CSS, images, and assets into optimized output files.
+
+**How it works:**
+- Analyzes entire dependency graph at startup
+- Bundles everything before serving
+- Uses **loaders** to transform files (Babel, CSS, images)
+- Uses **plugins** for additional functionality (minification, optimization)
+
+**Key benefits:**
+- Highly configurable and extensible
+- Massive plugin ecosystem
+- Code splitting and lazy loading
+- Works with virtually any asset type
+- Better legacy browser support
+
+#### Key Differences
+
+| Feature | Vite | Webpack |
+|---------|------|---------|
+| **Dev Server Startup** | Instant (no bundling) | Slow (bundles first) |
+| **HMR Speed** | ~50ms | 1-3 seconds |
+| **Configuration** | Minimal | Complex |
+| **Dev Mode** | Native ES modules | Full bundling |
+| **Production Build** | Rollup | Webpack |
+| **Learning Curve** | Easy | Steep |
+| **Maturity** | Newer (2020) | Established (2012) |
+| **Ecosystem** | Growing | Massive |
+
+#### Why Vite is Faster in Development
+
+1. **No bundling on startup** — Serves source files directly via native ES modules
+2. **On-demand compilation** — Only transforms files when browser requests them
+3. **Pre-bundling with esbuild** — Pre-bundles `node_modules` using esbuild (10-100x faster than JavaScript-based tools)
+
+**Example: Cold start with 1000 modules**
+- Webpack: 20-30 seconds
+- Vite: < 1 second
+
+#### When to Use Each
+
+**Choose Vite when:**
+- Starting a new React/Vue/Svelte project
+- Developer experience and speed are priorities
+- You want minimal configuration
+- Building modern SPAs
+
+**Choose Webpack when:**
+- Working on legacy projects already using Webpack
+- Need maximum configurability
+- Require specific loaders/plugins not in Vite
+- Need broader legacy browser support
+
+#### Quick Setup Comparison
+
+**Vite:**
+```bash
+npm create vite@latest my-app -- --template react
+cd my-app && npm install && npm run dev  # Starts instantly
+```
+
+**Webpack (via Create React App):**
+```bash
+npx create-react-app my-app
+cd my-app && npm start  # Takes time to bundle
+```
+
+**Summary:**
+- **Vite** = Fast, modern, simple — ideal for new projects
+- **Webpack** = Powerful, mature, flexible — better for complex/legacy projects
+
+Most new React projects today start with Vite for its speed and simplicity.
 
 ---
 

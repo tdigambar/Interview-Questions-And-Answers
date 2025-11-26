@@ -24,6 +24,7 @@ Comprehensive collection of common JavaScript interview programming problems wit
    - [Transform Array: Insert Sums Before Large Numbers](#-transform-array-insert-sums-before-large-numbers)
    - [Transform Array: Subtract Constant and Filter](#-transform-array-subtract-constant-and-filter)
    - [Flatten a Nested Array](#-flatten-a-nested-array)
+   - [Flatten JSON Object to Dot Notation](#-flatten-json-object-to-dot-notation)
 9. [Binary Array Problems](#binary-array-problems)
 10. [Dynamic Programming](#dynamic-programming)
 11. [Stack Problems](#stack-problems)
@@ -1453,6 +1454,63 @@ console.log(flattenRecursive([1, [2, [3, [4]]]]));          // [1, 2, 3, 4]
 console.log(flattenRecursive([[[[1]]]]));                   // [1]
 console.log(flattenRecursive([1, [], 2, [3], [[4]]]));     // [1, 2, 3, 4]
 ```
+
+---
+
+### ✅ Flatten JSON Object to Dot Notation
+
+**Problem:** Convert a nested JSON object into a flat object with dot-notation keys.
+
+**Input:**
+```javascript
+{
+  name: "John",
+  address: { city: "New York", zip: { code: "10001" } },
+  hobbies: ["reading", "coding"]
+}
+```
+
+**Output:**
+```javascript
+{
+  "name": "John",
+  "address.city": "New York",
+  "address.zip.code": "10001",
+  "hobbies.0": "reading",
+  "hobbies.1": "coding"
+}
+```
+
+**Explanation:** Nested objects are flattened by joining keys with dots. Arrays use numeric indices.
+
+```javascript
+function flattenJSON(obj, prefix = '', result = {}) {
+  for (const key in obj) {
+    const newKey = prefix ? `${prefix}.${key}` : key;
+    
+    if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+      flattenJSON(obj[key], newKey, result);
+    } else if (Array.isArray(obj[key])) {
+      obj[key].forEach((item, index) => {
+        if (typeof item === 'object' && item !== null) {
+          flattenJSON(item, `${newKey}.${index}`, result);
+        } else {
+          result[`${newKey}.${index}`] = item;
+        }
+      });
+    } else {
+      result[newKey] = obj[key];
+    }
+  }
+  return result;
+}
+
+console.log(flattenJSON({ a: { b: { c: 1 } } }));           // { "a.b.c": 1 }
+console.log(flattenJSON({ users: [{ name: "John" }] }));    // { "users.0.name": "John" }
+```
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(n)
 
 ---
 

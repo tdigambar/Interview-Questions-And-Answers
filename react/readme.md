@@ -9,6 +9,7 @@ A comprehensive collection of React.js interview questions covering basic to adv
 - [Advanced Level](#advanced-level)
   - [Offline Browsing Implementation](#40-how-do-you-implement-offline-browsing-in-react)
   - [Vite vs Webpack](#42-what-is-vite-what-is-webpack-what-is-the-difference)
+  - [Clock with Increment/Decrement Buttons](#43-build-a-clock-with-incrementdecrement-buttons-for-hours-and-minutes)
 
 ---
 
@@ -2335,6 +2336,105 @@ cd my-app && npm start  # Takes time to bundle
 - **Webpack** = Powerful, mature, flexible — better for complex/legacy projects
 
 Most new React projects today start with Vite for its speed and simplicity.
+
+### 43. Build a Clock with Increment/Decrement Buttons for Hours and Minutes
+
+**Scenario:** You are given a page with a clock. Implement the logic for buttons to increment and decrement the hours and minutes.
+
+**Requirements:**
+- Display hours and minutes (HH:MM format)
+- Buttons to increment/decrement hours (+1/-1)
+- Buttons to increment/decrement minutes (+1/-1)
+- Hours should wrap: 23 → 0 (increment) and 0 → 23 (decrement)
+- Minutes should wrap: 59 → 0 (increment) and 0 → 59 (decrement)
+
+**Solution:**
+
+```jsx
+import { useState } from 'react';
+
+function Clock() {
+  const [hours, setHours] = useState(0);
+  const [minutes, setMinutes] = useState(0);
+
+  const incrementHours = () => setHours((prev) => (prev + 1) % 24);
+  const decrementHours = () => setHours((prev) => (prev - 1 + 24) % 24);
+  
+  const incrementMinutes = () => setMinutes((prev) => (prev + 1) % 60);
+  const decrementMinutes = () => setMinutes((prev) => (prev - 1 + 60) % 60);
+
+  // Format to always show 2 digits (e.g., 09:05)
+  const formatTime = (value) => value.toString().padStart(2, '0');
+
+  return (
+    <div style={{ textAlign: 'center', fontFamily: 'monospace' }}>
+      <h1 style={{ fontSize: '4rem' }}>
+        {formatTime(hours)}:{formatTime(minutes)}
+      </h1>
+      
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
+        {/* Hours Controls */}
+        <div>
+          <p>Hours</p>
+          <button onClick={incrementHours}>+</button>
+          <button onClick={decrementHours}>-</button>
+        </div>
+        
+        {/* Minutes Controls */}
+        <div>
+          <p>Minutes</p>
+          <button onClick={incrementMinutes}>+</button>
+          <button onClick={decrementMinutes}>-</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default Clock;
+```
+
+**Key Concepts:**
+
+1. **State Management:** Two separate `useState` hooks for hours and minutes
+2. **Wrapping Logic:** 
+   - `(prev + 1) % 24` — wraps 23 → 0 for hours
+   - `(prev - 1 + 24) % 24` — wraps 0 → 23 (add 24 to handle negative modulo)
+3. **Formatting:** `padStart(2, '0')` ensures two-digit display (e.g., "09" instead of "9")
+
+**Alternative: With Minutes Affecting Hours**
+
+If incrementing minutes past 59 should also increment hours:
+
+```jsx
+const incrementMinutes = () => {
+  setMinutes((prev) => {
+    if (prev === 59) {
+      incrementHours();
+      return 0;
+    }
+    return prev + 1;
+  });
+};
+
+const decrementMinutes = () => {
+  setMinutes((prev) => {
+    if (prev === 0) {
+      decrementHours();
+      return 59;
+    }
+    return prev - 1;
+  });
+};
+```
+
+**Alternative: Initialize with Current Time**
+
+```jsx
+const now = new Date();
+const [hours, setHours] = useState(now.getHours());
+const [minutes, setMinutes] = useState(now.getMinutes());
+```
 
 ---
 

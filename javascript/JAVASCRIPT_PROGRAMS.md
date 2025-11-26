@@ -12,6 +12,7 @@ Comprehensive collection of common JavaScript interview programming problems wit
 4. [Hashing](#hashing)
 5. [Trees & Graphs](#trees--graphs)
 6. [Mathematical Problems](#mathematical-problems)
+   - [Fibonacci Number](#-fibonacci-number)
 7. [String Manipulation](#string-manipulation)
    - [Reverse a String Without Built-in Methods](#-reverse-a-string-without-built-in-methods)
    - [Palindrome Check](#-palindrome-check)
@@ -249,6 +250,49 @@ console.log(factorialRecursive(5)); // Output: 120
 
 **Time Complexity:** O(n)  
 **Space Complexity:** O(n) — due to recursive call stack
+
+---
+
+### ✅ Fibonacci Number
+
+**Problem:** Return the nth Fibonacci number.
+
+**Fibonacci Sequence:** 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55...
+
+Each number is the sum of the two preceding ones: `F(n) = F(n-1) + F(n-2)`
+
+**Examples:**
+- `fib(0)` → 0
+- `fib(5)` → 5
+- `fib(7)` → 13
+- `fib(10)` → 55
+
+```javascript
+function fibonacci(n) {
+  if (n <= 0) return 0;
+  if (n === 1) return 1;
+  
+  let prev = 0, curr = 1;
+  for (let i = 2; i <= n; i++) {
+    const next = prev + curr;
+    prev = curr;
+    curr = next;
+  }
+  return curr;
+}
+
+console.log(fibonacci(5));  // 5
+console.log(fibonacci(7));  // 13
+console.log(fibonacci(10)); // 55
+```
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(1)
+
+**How it works:**
+- Start with first two numbers: 0 and 1
+- Iterate and calculate next number by adding previous two
+- Return the nth number
 
 ---
 

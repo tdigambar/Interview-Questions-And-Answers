@@ -10,6 +10,7 @@ A comprehensive collection of React.js interview questions covering basic to adv
   - [Offline Browsing Implementation](#40-how-do-you-implement-offline-browsing-in-react)
   - [Vite vs Webpack](#42-what-is-vite-what-is-webpack-what-is-the-difference)
   - [Clock with Increment/Decrement Buttons](#43-build-a-clock-with-incrementdecrement-buttons-for-hours-and-minutes)
+  - [Dice Component](#44-build-a-dice-component)
 
 ---
 
@@ -2435,6 +2436,44 @@ const now = new Date();
 const [hours, setHours] = useState(now.getHours());
 const [minutes, setMinutes] = useState(now.getMinutes());
 ```
+
+### 44. Build a Dice Component
+
+**Scenario:** Create a dice button that generates a random number from 1 to 6 when clicked.
+
+**Solution:**
+
+```jsx
+import { useState } from 'react';
+
+function Dice() {
+  const [value, setValue] = useState(1);
+
+  const rollDice = () => {
+    const randomNumber = Math.floor(Math.random() * 6) + 1;
+    setValue(randomNumber);
+  };
+
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <h1 style={{ fontSize: '5rem' }}>🎲 {value}</h1>
+      <button onClick={rollDice} style={{ padding: '10px 20px', fontSize: '1.2rem' }}>
+        Roll Dice
+      </button>
+    </div>
+  );
+}
+
+export default Dice;
+```
+
+**Key Concept:**
+- `Math.random()` returns a number from 0 (inclusive) to 1 (exclusive)
+- `Math.random() * 6` gives 0 to 5.999...
+- `Math.floor()` rounds down to 0, 1, 2, 3, 4, or 5
+- Adding 1 gives final range: 1 to 6
+
+**Formula:** `Math.floor(Math.random() * (max - min + 1)) + min`
 
 ---
 

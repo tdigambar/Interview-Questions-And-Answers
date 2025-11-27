@@ -13,6 +13,7 @@ Comprehensive collection of common JavaScript interview programming problems wit
 5. [Trees & Graphs](#trees--graphs)
 6. [Mathematical Problems](#mathematical-problems)
    - [Fibonacci Number](#-fibonacci-number)
+   - [ASCII Art Pyramid](#-ascii-art-pyramid)
 7. [String Manipulation](#string-manipulation)
    - [Reverse a String Without Built-in Methods](#-reverse-a-string-without-built-in-methods)
    - [Palindrome Check](#-palindrome-check)
@@ -293,6 +294,77 @@ console.log(fibonacci(10)); // 55
 - Start with first two numbers: 0 and 1
 - Iterate and calculate next number by adding previous two
 - Return the nth number
+
+---
+
+### ✅ ASCII Art Pyramid
+
+**Problem:** Generate an ASCII art pyramid with N levels by printing N rows of asterisks, where the top row has a single asterisk in the center and each successive row has two additional asterisks on either side.
+
+**Examples:**
+
+When N = 3:
+```
+  *
+ ***
+*****
+```
+
+When N = 5:
+```
+    *
+   ***
+  *****
+ *******
+*********
+```
+
+```javascript
+function generatePyramid(n) {
+  for (let i = 0; i < n; i++) {
+    const spaces = ' '.repeat(n - 1 - i);
+    const stars = '*'.repeat(2 * i + 1);
+    console.log(spaces + stars);
+  }
+}
+
+generatePyramid(10);
+// Output:
+//          *
+//         ***
+//        *****
+//       *******
+//      *********
+//     ***********
+//    *************
+//   ***************
+//  *****************
+// *******************
+```
+
+**How it works:**
+- For each row `i` (0 to N-1):
+  - **Leading spaces:** `N - 1 - i` (decreases as we go down)
+  - **Stars:** `2 * i + 1` (1, 3, 5, 7... increases by 2 each row)
+
+**Time Complexity:** O(n²) — each row prints up to 2n-1 characters  
+**Space Complexity:** O(n) — for the string being constructed
+
+**Alternative: Return as String Array**
+
+```javascript
+function pyramidArray(n) {
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    const spaces = ' '.repeat(n - 1 - i);
+    const stars = '*'.repeat(2 * i + 1);
+    result.push(spaces + stars);
+  }
+  return result;
+}
+
+console.log(pyramidArray(5).join('\n'));
+```
 
 ---
 

@@ -2776,6 +2776,50 @@ Use Babel with `@babel/preset-env` which automatically includes needed polyfills
 
 ---
 
+### 35. Explain how async generators differ from regular ones
+
+**Regular Functions vs Async Generators:**
+
+1. **Regular Generators (`function*`)**:
+   - Return a **Generator** object.
+   - Values are synchronous.
+   - Iterated via `for...of`.
+   - `yield` returns `{ value, done }`.
+
+2. **Async Generators (`async function*`)**:
+   - Return an **AsyncGenerator** object.
+   - Values are asynchronous (Promises).
+   - Iterated via `for await...of`.
+   - Can use `await` inside the generator.
+   - `yield` returns a Promise resolving to `{ value, done }`.
+
+```javascript
+// Regular Generator
+function* regularGen() {
+    yield 1;
+    yield 2;
+}
+
+for (const val of regularGen()) {
+    console.log(val); // 1, 2
+}
+
+// Async Generator
+async function* asyncGen() {
+    await new Promise(r => setTimeout(r, 100)); // Can use await
+    yield 1;
+    yield 2;
+}
+
+(async () => {
+    for await (const val of asyncGen()) {
+        console.log(val); // 1, 2
+    }
+})();
+```
+
+---
+
 ## Conclusion
 
 These JavaScript interview questions cover fundamental concepts to advanced features, including ES6+ syntax, asynchronous programming, modern JavaScript patterns, and performance optimization. Understanding these concepts will help you excel in JavaScript interviews and build robust, efficient applications.

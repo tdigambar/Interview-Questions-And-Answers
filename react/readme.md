@@ -779,6 +779,70 @@ Button.displayName = 'Button';
 - Use sparingly - prefer props and state when possible
 - Combine with `useImperativeHandle` to limit exposed API
 
+### 27. What is React Fiber?
+
+React Fiber is the reimplementation of React's reconciliation algorithm (introduced in React 16). It breaks rendering work into small units called "fibers" so work can be paused, aborted, or resumed. Key points:
+
+- Fiber is a linked tree of units of work representing components and their state
+- Enables incremental (time-sliced) rendering and cooperative scheduling
+- Supports prioritization of updates (higher-priority updates interrupt lower-priority work)
+- Makes features like Suspense, concurrent rendering and interruptible rendering possible
+
+In short, Fiber lets React keep the UI responsive by splitting rendering into chunks and scheduling them according to priority.
+
+### 28. What is batching in React?
+
+Batching groups multiple state updates into a single render to avoid unnecessary renders and improve performance. Notes:
+
+- Historically, React batched updates inside React event handlers; updates from other async sources were not batched.
+- Since React 18, automatic batching applies across more contexts (promises, timeouts, native event handlers), so multiple state updates are usually combined into one render.
+- Use `flushSync` (or `ReactDOM.flushSync`) to force a synchronous render when needed.
+
+Example:
+
+```jsx
+// multiple setState calls will be batched into one render
+setCount(c => c + 1);
+setName('Alice');
+```
+
+### 29. What is React concurrency (concurrent rendering)?
+
+React concurrency (often called concurrent rendering) is the set of capabilities built on Fiber that allow React to prepare and update UI in an interruptible, prioritized way. Important ideas:
+
+- Not parallel threads — it's cooperative scheduling on the main thread that can pause and resume rendering work
+- Enables smoother UIs by yielding to user input, keeping interactions responsive
+- Core features: time-slicing, Suspense, `useTransition`/`startTransition`, and server components
+- `useTransition` lets you mark updates as low priority (transitions) so urgent updates remain responsive
+
+Example using `useTransition`:
+
+```jsx
+import { useTransition } from 'react';
+
+function Search() {
+  const [query, setQuery] = useState('');
+  const [isPending, startTransition] = useTransition();
+
+  function onChange(e) {
+    const value = e.target.value;
+    // mark this update as non-urgent
+    startTransition(() => {
+      setQuery(value);
+    });
+  }
+
+  return (
+    <>
+      <input onChange={onChange} />
+      {isPending ? <div>Loading...</div> : <Results query={query} />}
+    </>
+  );
+}
+```
+
+These features let developers prioritize what matters for responsiveness while deferring expensive renders.
+
 ---
 
 ### 27. What are Code Splitting and Lazy Loading in React?

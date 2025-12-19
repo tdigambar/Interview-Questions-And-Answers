@@ -403,6 +403,66 @@ function App() {
 }
 ```
 
+### How many ways can we share data across different components in React?
+
+There are many ways to share data across components depending on scope and complexity. Common approaches include:
+
+- **Props (Parent → Child):** Pass data and callbacks down the component tree.
+- **Lifting State Up:** Move shared state to the nearest common ancestor and pass it via props.
+- **Context API:** Provide values to many descendants without prop drilling.
+- **State Management Libraries:** Global stores like Redux, MobX, Recoil, or Zustand for app-wide state.
+- **useReducer + Context:** Combine `useReducer` with Context for predictable state and actions across components.
+- **Custom Hooks:** Encapsulate shared logic/state in hooks and reuse them across components.
+- **Render Props / Function-as-Child:** Share behavior or data by passing a function as a child (older pattern).
+- **Higher-Order Components (HOCs):** Wrap components to inject props or behavior (older pattern).
+- **URL / Route Params:** Share state via query parameters or route params for navigation-related data.
+- **Local Storage / Session Storage:** Persist and share state via browser storage for cross-tab or reload persistence.
+- **Server / Backend Sync:** Keep shared data on the server and fetch where needed.
+- **Event Emitters / Pub-Sub:** Use an event bus (or libraries) for decoupled communication between distant components.
+
+Notes:
+- Choose lightweight options (`props`, `Context`, `custom hooks`) for component-level needs.
+- Use global stores (Redux, Recoil, Zustand) when you need predictable, testable, app-wide state.
+- Prefer `Context` with `useReducer` over heavy libraries for medium complexity.
+
+### Microfrontends with React (short Q&A)
+
+**What is a microfrontend?**
+
+Microfrontends apply microservice principles to the frontend: a large UI is split into smaller, independently developed and deployed “microapps.” Each microapp owns its UI, data-fetching, tests, and deployment, and is integrated into a host (shell) at runtime or build-time.
+
+**Why use microfrontends?**
+
+- **Team autonomy:** Teams can work independently, choose tools, and deploy without coordinating a monolithic release.
+- **Independent deploys & scaling:** Roll out features or fixes for one microapp without deploying the entire frontend.
+- **Incremental migration:** Migrate or replace parts of a large app gradually (e.g., rewrite one screen at a time).
+- **Tech heterogeneity:** Allow different microapps to use different frameworks or library versions where appropriate.
+- **Clear ownership:** Each microapp has its own repository/pipeline, improving ownership and accountability.
+
+**When not to use microfrontends**
+
+- For small apps or teams — added infra and operational complexity outweighs benefits.
+- When network overhead or performance constraints make many independent bundles impractical.
+
+**Composition patterns**
+
+- **Build-time composition:** Package microapps together at build (simple but couples builds).
+- **Runtime composition:** Load remotes at runtime using Module Federation, import maps/SystemJS, or `single-spa` (enables independent deploys).
+
+**Turborepo approach**
+
+Use a Turborepo-managed monorepo with `apps/` (host + micro-apps) and `packages/` (shared libs). Turborepo orchestrates builds and caching; combine it with Module Federation (webpack) or Vite federation to load remotes at runtime.
+
+**Key considerations**
+
+- **Shared deps:** Prefer singletons for React and critical libs to avoid duplicate React instances (Module Federation `shared` config).
+- **Routing ownership:** Host owns top-level routes; micro-apps own internal routing. Use a lifecycle manager like `single-spa` for mount/unmount.
+- **Communication:** Use explicit contracts — route params, host-owned global state, events/pub-sub, or `window.postMessage` for iframes.
+- **Styling isolation:** Avoid CSS collisions via CSS Modules, CSS-in-JS, or Shadow DOM.
+- **Tradeoffs:** Adds infra, debugging complexity, and potential bundle/network overhead; enforce semver and singletons to reduce runtime issues.
+
+If you'd like, I can scaffold a runnable Turborepo starter (host + one remote) using either `webpack` (Module Federation) or `vite` (federation plugin). Which bundler do you prefer?
+
 ### 17. What are React Fragments?
 
 Fragments let you group children without adding extra DOM nodes.
@@ -483,6 +543,45 @@ function Timer() {
   return <div>Check console</div>;
 }
 ```
+
+### How to pass data when navigating with `useNavigate`?
+
+You can pass transient data via the `state` option of `useNavigate`, and read it in the destination with `useLocation`.
+
+Example (sender):
+
+```jsx
+import { useNavigate } from 'react-router-dom';
+
+function From() {
+  const navigate = useNavigate();
+  const user = { id: 1, name: 'Alice' };
+
+  const go = () => navigate('/to', { state: { user, from: '/from' } });
+
+  return <button onClick={go}>Go to details</button>;
+}
+```
+
+Example (receiver):
+
+```jsx
+import { useLocation } from 'react-router-dom';
+
+function To() {
+  const { state } = useLocation();
+  const user = state?.user;
+
+  return <div>{user ? `Hello ${user.name}` : 'No data received'}</div>;
+}
+```
+
+Notes:
+- Data passed via `navigate(..., { state })` is stored in history state and is not part of the URL. It will be lost on a full page refresh or when someone opens the URL directly.
+- For persistence across refresh/bookmark/share use query params, route params (`useParams()`), or persist to storage (`sessionStorage`/`localStorage`) and rehydrate on mount.
+- Use `replace: true` to navigate without adding a new history entry: `navigate('/to', { state, replace: true })`.
+- For cross-tab or long-lived sharing prefer server-side state (IDs in URL) or storage plus a URL token.
+
 
 ### 20. What is conditional rendering in React?
 

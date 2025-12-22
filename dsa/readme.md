@@ -1446,6 +1446,72 @@ class MinHeap {
 }
 ```
 
+### 13.1 What is Depth First Search (DFS)?
+
+Depth First Search (DFS) is a graph traversal algorithm that explores as far as possible along each branch before backtracking.
+
+**Key Characteristics:**
+- Uses a stack (LIFO) data structure
+- Explores deep into the graph before exploring siblings
+- Can be implemented recursively or iteratively
+- Time Complexity: O(V + E) where V is vertices and E is edges
+- Space Complexity: O(V) for the stack
+
+```javascript
+// DFS Recursive Implementation
+function dfsRecursive(graph, start, visited = new Set(), result = []) {
+  visited.add(start);
+  result.push(start);
+  
+  for (let neighbor of graph[start] || []) {
+    if (!visited.has(neighbor)) {
+      dfsRecursive(graph, neighbor, visited, result);
+    }
+  }
+  
+  return result;
+}
+
+// DFS Iterative Implementation
+function dfsIterative(graph, start) {
+  const stack = [start];
+  const visited = new Set();
+  const result = [];
+  
+  visited.add(start);
+  
+  while (stack.length > 0) {
+    const vertex = stack.pop();
+    result.push(vertex);
+    
+    for (let neighbor of graph[vertex] || []) {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        stack.push(neighbor);
+      }
+    }
+  }
+  
+  return result;
+}
+
+// Example usage
+const graph = {
+  A: ['B', 'C'],
+  B: ['A', 'D', 'E'],
+  C: ['A', 'F'],
+  D: ['B'],
+  E: ['B', 'F'],
+  F: ['C', 'E']
+};
+
+console.log('DFS Recursive:', dfsRecursive(graph, 'A'));
+// Output: ['A', 'B', 'D', 'E', 'F', 'C']
+
+console.log('DFS Iterative:', dfsIterative(graph, 'A'));
+// Output: ['A', 'C', 'F', 'E', 'B', 'D']
+```
+
 ### 14. What is a Graph?
 
 A Graph is a non-linear data structure consisting of vertices and edges.

@@ -211,6 +211,76 @@ function inorderTraversal(root) {
 **Time Complexity:** O(n)  
 **Space Complexity:** O(h) where h is the height of the tree
 
+### ✅ 5.2 Graph Traversal - Depth First Search (DFS)
+
+**Problem:** Implement Depth First Search algorithm for graph traversal using both recursive and iterative approaches.
+
+#### 🧮 1️⃣ Recursive Approach
+
+```javascript
+function dfsRecursive(graph, start, visited = new Set(), result = []) {
+  visited.add(start);
+  result.push(start);
+  
+  for (let neighbor of graph[start] || []) {
+    if (!visited.has(neighbor)) {
+      dfsRecursive(graph, neighbor, visited, result);
+    }
+  }
+  
+  return result;
+}
+```
+
+#### 🌀 2️⃣ Iterative Approach
+
+```javascript
+function dfsIterative(graph, start) {
+  const stack = [start];
+  const visited = new Set();
+  const result = [];
+  
+  visited.add(start);
+  
+  while (stack.length > 0) {
+    const vertex = stack.pop();
+    result.push(vertex);
+    
+    for (let neighbor of graph[vertex] || []) {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        stack.push(neighbor);
+      }
+    }
+  }
+  
+  return result;
+}
+```
+
+#### 📊 Example Usage
+
+```javascript
+// Graph represented as adjacency list
+const graph = {
+  A: ['B', 'C'],
+  B: ['A', 'D', 'E'],
+  C: ['A', 'F'],
+  D: ['B'],
+  E: ['B', 'F'],
+  F: ['C', 'E']
+};
+
+console.log('DFS Recursive:', dfsRecursive(graph, 'A'));
+// Output: ['A', 'B', 'D', 'E', 'F', 'C']
+
+console.log('DFS Iterative:', dfsIterative(graph, 'A'));
+// Output: ['A', 'C', 'F', 'E', 'B', 'D']
+```
+
+**Time Complexity:** O(V + E) where V is vertices and E is edges  
+**Space Complexity:** O(V) for the visited set and recursion stack
+
 ---
 
 ## Mathematical Problems

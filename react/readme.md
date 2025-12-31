@@ -2643,3 +2643,12 @@ export default Dice;
 ## Conclusion
 
 These questions cover React fundamentals through advanced concepts and should thoroughly prepare you for a React.js interview! The topics range from basic component structure to advanced patterns like HOCs, custom hooks, design patterns, and performance optimization techniques that are essential for building modern React applications.
+
+## SSE Example
+
+Simple Server-Sent Events example (Node + React):
+
+- **Server**: See [node/sse-server/server.js](node/sse-server/server.js) — minimal Express endpoint `GET /events` that streams a JSON payload every second.
+- **React component**: See [react/examples/sse-demo.jsx](react/examples/sse-demo.jsx) — `SSEDemo` component that connects to an SSE endpoint using `EventSource` and renders incoming events.
+
+Notes: This is an example only. To run the server, install `express` and `cors` and start `server.js`. In a real app, set the correct `url` prop for `SSEDemo` (for example `http://localhost:3000/events`).

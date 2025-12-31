@@ -19,6 +19,7 @@ Comprehensive collection of common JavaScript interview programming problems wit
    - [Palindrome Check](#-palindrome-check)
    - [Count Vowels in String](#-count-vowels-in-string)
    - [Find First Repeating Character](#-find-first-repeating-character)
+   - [Capitalize the First Letter of Every Word](#-capitalize-the-first-letter-of-every-word)
 8. [Array Algorithms](#array-algorithms)
    - [Binary Search](#-binary-search)
    - [Search in Rotated Sorted Array](#-search-in-rotated-sorted-array)
@@ -850,6 +851,67 @@ console.log(findFirstRepeatingChar("abc"));     // null
 
 **Time Complexity:** O(n)  
 **Space Complexity:** O(n)
+
+---
+
+### ✅ Capitalize the First Letter of Every Word
+
+**Problem:** Capitalize the first letter of every word in a sentence.
+
+**Input:** `"hello world"`  
+**Output:** `"Hello World"`
+
+#### 🎯 Method 1: split, map, join (Most Common)
+
+```javascript
+function capitalizeWords(sentence) {
+  return sentence
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+console.log(capitalizeWords("hello world"));                    // "Hello World"
+console.log(capitalizeWords("javascript is awesome"));         // "Javascript Is Awesome"
+console.log(capitalizeWords("capitalize the first letter"));   // "Capitalize The First Letter"
+```
+
+**Time Complexity:** O(n)  
+**Space Complexity:** O(n)
+
+---
+
+#### 🔍 Method 2: Regex Replace
+
+```javascript
+function capitalizeWordsRegex(sentence) {
+  return sentence.replace(/\b\w/g, char => char.toUpperCase());
+}
+
+console.log(capitalizeWordsRegex("hello world"));               // "Hello World"
+console.log(capitalizeWordsRegex("javascript is awesome"));    // "Javascript Is Awesome"
+```
+
+**Regex Explanation:**
+- `\b` - Word boundary
+- `\w` - Any word character
+- `g` - Global flag (all matches)
+
+---
+
+#### 💡 Method 3: With toLowerCase
+
+```javascript
+function capitalizeWordsWithLower(sentence) {
+  return sentence
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.toLowerCase().slice(1))
+    .join(' ');
+}
+
+console.log(capitalizeWordsWithLower("HELLO WORLD"));  // "Hello World"
+console.log(capitalizeWordsWithLower("hello WORLD"));  // "Hello World"
+```
 
 ---
 

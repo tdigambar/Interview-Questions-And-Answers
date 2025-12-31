@@ -915,6 +915,44 @@ console.log(capitalizeWordsWithLower("hello WORLD"));  // "Hello World"
 
 ---
 
+### ✅ Memoize (Simple)
+
+**Problem:** Implement a simple `memoize(fn)` that caches results for given arguments to avoid repeated work.
+
+#### Implementation
+
+```javascript
+function memoize(fn, resolver) {
+  const cache = new Map();
+  return function(...args) {
+    const key = resolver ? resolver(...args) : JSON.stringify(args);
+    if (cache.has(key)) return cache.get(key);
+    const result = fn.apply(this, args);
+    cache.set(key, result);
+    return result;
+  };
+}
+```
+
+#### Example (Fibonacci)
+
+```javascript
+const fib = memoize(function (n) {
+  return n < 2 ? n : fib(n - 1) + fib(n - 2);
+});
+
+console.log(fib(10)); // 55
+```
+
+**Notes:**
+- Uses `JSON.stringify(args)` for the cache key; this is simple but has limitations (order, objects with cycles).
+- For object or single-object keys, consider using a `WeakMap` or supplying a custom `resolver`.
+
+**Time Complexity:** Best-case O(1) per cached call; initial call cost depends on `fn`.
+**Space Complexity:** O(k) where k is number of distinct argument lists cached.
+
+---
+
 ## Array Algorithms
 
 ### ✅ Second Largest Element

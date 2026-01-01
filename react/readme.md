@@ -2644,6 +2644,21 @@ export default Dice;
 
 These questions cover React fundamentals through advanced concepts and should thoroughly prepare you for a React.js interview! The topics range from basic component structure to advanced patterns like HOCs, custom hooks, design patterns, and performance optimization techniques that are essential for building modern React applications.
 
+## Core Web Vitals (Short Answer)
+
+- **What:** User-centric metrics from Google measuring loading, interactivity, and visual stability.
+- **Key metrics:**
+  - **LCP (Largest Contentful Paint):** loading — good ≤ 2.5s, needs improvement 2.5–4s, poor > 4s.
+  - **INP (Interaction to Next Paint):** responsiveness (replacement for FID) — lower is better; aim ≲200ms.
+  - **CLS (Cumulative Layout Shift):** visual stability — good ≤ 0.1, needs improvement 0.1–0.25, poor > 0.25.
+- **Why it matters:** Directly correlates with user experience and affects SEO and conversions.
+- **How measured:** RUM (Chrome UX Report, web-vitals JS) and lab tools (Lighthouse, PageSpeed Insights, DevTools).
+- **Common fixes:**
+  - *LCP:* optimize server/critical resources, compress & preload large assets, lazy-load below-the-fold.
+  - *INP:* break up long tasks, defer heavy JS, optimize event handlers, use web workers.
+  - *CLS:* reserve image/iframe sizes, avoid inserting content above existing content, reserve ad slots.
+- **Interview tip:** Define the three metrics, state thresholds, mention tools (`Lighthouse`, `web-vitals`), and give one concrete fix per metric.
+
 ## SSE Example
 
 Simple Server-Sent Events example (Node + React):

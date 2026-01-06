@@ -1837,6 +1837,469 @@ vs default:
 
 ---
 
+### 12. How do you secure an API?
+
+**Answer:**
+Securing an API requires implementing multiple layers of protection including authentication, authorization, encryption, input validation, and monitoring. Here's a comprehensive approach:
+
+**1. Authentication Methods**
+
+**API Key Authentication:**
+```javascript
+// Simple but less secure - suitable for internal/development APIs
+app.use((req, res, next) => {
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey === process.env.API_KEY) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Invalid API Key' });
+  }
+});
+```
+
+**JWT (JSON Web Token) Authentication:**
+```javascript
+const jwt = require('jsonwebtoken');
+const SECRET = process.env.JWT_SECRET;
+
+// Generate token on login
+app.post('/login', (req, res) => {
+  const user = { id: 1, email: 'user@example.com' };
+  const token = jwt.sign(user, SECRET, { expiresIn: '1h' });
+  res.json({ token });
+});
+
+// Verify token
+const verifyToken = (req, res, next) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No token provided' });
+  
+  try {
+    const decoded = jwt.verify(token, SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(403).json({ error: 'Invalid token' });
+  }
+};
+
+app.get('/protected', verifyToken, (req, res) => {
+  res.json({ message: `Hello ${req.user.email}` });
+});
+```
+
+**OAuth 2.0 (Third-party authentication):**
+```javascript
+// Using passport with Google OAuth
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: '/auth/google/callback'
+}, (accessToken, refreshToken, profile, done) => {
+  // Store/verify user and return
+  return done(null, profile);
+}));
+
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  (req, res) => {
+    // Generate JWT from Google profile
+    const token = jwt.sign({ id: req.user.id }, SECRET);
+    res.redirect(`/dashboard?token=${token}`);
+  }
+);
+```
+
+**2. Authorization (Role-Based Access Control)**
+
+```javascript
+// Middleware for RBAC
+const authorize = (roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    next();
+  };
+};
+
+// Usage
+app.delete('/admin/users/:id', 
+  verifyToken, 
+  authorize(['admin']), 
+  (req, res) => {
+    // Delete user
+    res.json({ message: 'User deleted' });
+  }
+);
+```
+
+**3. Encryption & HTTPS**
+
+```javascript
+// Force HTTPS
+app.use((req, res, next) => {
+  if (req.header('x-forwarded-proto') !== 'https') {
+    res.redirect(\`https://\${req.header('host')}\${req.url}\`);
+  } else {
+    next();
+  }
+});
+
+// Data encryption
+const crypto = require('crypto');
+
+const encryptData = (data, secret) => {
+  const cipher = crypto.createCipher('aes-256-cbc', secret);
+  let encrypted = cipher.update(data, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return encrypted;
+};
+
+const decryptData = (encrypted, secret) => {
+  const decipher = crypto.createDecipher('aes-256-cbc', secret);
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+};
+```
+
+**4. Input Validation & Sanitization**
+
+```javascript
+const { body, validationResult } = require('express-validator');
+
+app.post('/users', 
+  body('email').isEmail().normalizeEmail(),
+  body('password').isLength({ min: 8 }).trim().escape(),
+  body('name').trim().escape(),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    // Process validated data
+    res.json({ message: 'User created' });
+  }
+);
+
+// SQL Injection Prevention - Use parameterized queries
+const query = 'SELECT * FROM users WHERE email = ? AND role = ?';
+db.query(query, [email, role], (err, results) => {
+  // Safe from SQL injection
+});
+```
+
+**5. Rate Limiting & Throttling**
+
+```javascript
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply to all requests
+app.use(limiter);
+
+// Apply to specific endpoints
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5, // 5 attempts
+  skipSuccessfulRequests: true, // Don't count successful attempts
+});
+
+app.post('/login', loginLimiter, (req, res) => {
+  // Login logic
+});
+```
+
+**6. CORS (Cross-Origin Resource Sharing)**
+
+```javascript
+const cors = require('cors');
+
+// Strict CORS
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || 'http://localhost:3000',
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Don't use wildcard in production
+// ❌ app.use(cors()); // Too permissive
+```
+
+**7. Security Headers**
+
+```javascript
+const helmet = require('helmet');
+
+app.use(helmet());
+
+// Individual headers
+app.use((req, res, next) => {
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+  
+  // Prevent MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  
+  // Enable XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  
+  // Content Security Policy
+  res.setHeader('Content-Security-Policy', "default-src 'self'");
+  
+  // Referrer Policy
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // Prevent caching sensitive data
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  
+  next();
+});
+```
+
+**8. Secure Error Handling**
+
+```javascript
+// ❌ Bad - Exposes sensitive info
+app.get('/data', (req, res) => {
+  try {
+    const data = risky_operation();
+  } catch (err) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
+// ✅ Good - Generic error response
+app.get('/data', (req, res) => {
+  try {
+    const data = risky_operation();
+  } catch (err) {
+    console.error('Error:', err); // Log internally
+    res.status(500).json({ error: 'Internal server error' }); // Generic response
+  }
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' 
+      ? 'Internal server error'
+      : err.message
+  });
+});
+```
+
+**9. Logging & Monitoring**
+
+```javascript
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' })
+  ]
+});
+
+// Log all requests
+app.use((req, res, next) => {
+  logger.info({
+    method: req.method,
+    path: req.path,
+    ip: req.ip,
+    timestamp: new Date()
+  });
+  next();
+});
+
+// Alert on suspicious activity
+app.use((req, res, next) => {
+  if (req.path.includes('admin') && !req.user?.isAdmin) {
+    logger.warn({
+      event: 'unauthorized_admin_access_attempt',
+      ip: req.ip,
+      timestamp: new Date()
+    });
+  }
+  next();
+});
+```
+
+**10. Refresh Token Strategy**
+
+```javascript
+// Short-lived access token + long-lived refresh token
+app.post('/login', (req, res) => {
+  const user = { id: 1, email: 'user@example.com' };
+  
+  const accessToken = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '15m' });
+  const refreshToken = jwt.sign(user, process.env.REFRESH_SECRET, { expiresIn: '7d' });
+  
+  res.json({ 
+    accessToken, 
+    refreshToken 
+  });
+});
+
+// Refresh endpoint
+app.post('/refresh', (req, res) => {
+  const { refreshToken } = req.body;
+  
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
+    const newAccessToken = jwt.sign(decoded, process.env.JWT_SECRET, { expiresIn: '15m' });
+    res.json({ accessToken: newAccessToken });
+  } catch (err) {
+    res.status(401).json({ error: 'Invalid refresh token' });
+  }
+});
+```
+
+**11. Common Vulnerabilities to Prevent**
+
+| Vulnerability | Prevention |
+|---------------|-----------|
+| **SQL Injection** | Use parameterized queries, ORM validation |
+| **XSS (Cross-Site Scripting)** | Sanitize input, escape output, CSP headers |
+| **CSRF (Cross-Site Request Forgery)** | CSRF tokens, SameSite cookies |
+| **Insecure Deserialization** | Validate data structure, use safe parsers |
+| **Security Misconfiguration** | Use security headers, disable debug mode |
+| **Broken Authentication** | Proper JWT implementation, MFA support |
+| **Broken Authorization** | Validate permissions on every request |
+| **Sensitive Data Exposure** | Encrypt in transit (HTTPS) and at rest |
+| **XML External Entities (XXE)** | Disable external entities in XML parsers |
+| **Broken Access Control** | Implement proper RBAC/ABAC |
+
+**12. Complete Secure API Example**
+
+```javascript
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const cors = require('cors');
+const { body, validationResult } = require('express-validator');
+
+const app = express();
+
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS || 'http://localhost:3000',
+  credentials: true
+}));
+app.use(express.json());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100
+});
+app.use(limiter);
+
+// Authentication middleware
+const verifyToken = (req, res, next) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No token' });
+  
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch (err) {
+    res.status(403).json({ error: 'Invalid token' });
+  }
+};
+
+// Authorization middleware
+const authorize = (roles) => (req, res, next) => {
+  if (!roles.includes(req.user.role)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
+};
+
+// Routes
+app.post('/login',
+  body('email').isEmail(),
+  body('password').isLength({ min: 8 }),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    
+    const user = { id: 1, email: req.body.email, role: 'user' };
+    const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.json({ token });
+  }
+);
+
+app.get('/protected', verifyToken, (req, res) => {
+  res.json({ message: `Hello ${req.user.email}` });
+});
+
+app.delete('/admin/users/:id', 
+  verifyToken, 
+  authorize(['admin']),
+  (req, res) => {
+    res.json({ message: 'User deleted' });
+  }
+);
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' 
+      ? 'Internal server error'
+      : err.message
+  });
+});
+
+app.listen(3000, () => console.log('Secure API running on port 3000'));
+```
+
+**Security Checklist:**
+
+- [ ] Authentication implemented (JWT/OAuth)
+- [ ] Authorization (RBAC) configured
+- [ ] HTTPS/TLS enforced
+- [ ] Input validation and sanitization in place
+- [ ] Rate limiting enabled
+- [ ] CORS properly configured
+- [ ] Security headers set (Helmet)
+- [ ] Error handling doesn't expose sensitive info
+- [ ] Logging and monitoring active
+- [ ] Refresh token strategy implemented
+- [ ] Secrets managed securely (environment variables)
+- [ ] Regular security updates applied
+- [ ] Dependencies scanned for vulnerabilities
+- [ ] API versioning strategy in place
+- [ ] Documentation includes security best practices
+
+---
+
 ## Summary
 
 This guide covers essential security interview questions including:
@@ -1848,7 +2311,8 @@ This guide covers essential security interview questions including:
 5. **Application Security**: Secure coding practices
 6. **REST API Monitoring & Versioning**: Metrics, patterns, deprecation
 7. **REST API Design Patterns**: Resource orientation, HATEOAS, pagination, caching, idempotency
-8. **Best Practices**: Security guidelines and standards
+8. **API Security**: Authentication methods, authorization, encryption, input validation, rate limiting, CORS, security headers, error handling, logging, vulnerability prevention
+9. **Best Practices**: Security guidelines and standards
 
 Remember to understand both the concepts and practical implementations. Good luck with your security interviews!
 

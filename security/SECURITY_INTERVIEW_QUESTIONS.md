@@ -3701,6 +3701,620 @@ const sessions = { userId: { data } };
 
 ---
 
+### 16. How would you handle partial updates in REST APIs?
+
+**Answer:**
+Partial updates allow clients to modify specific fields of a resource without sending the entire resource representation. This requires careful handling to distinguish between fields that should be updated and fields that should remain unchanged.
+
+**1. PUT vs PATCH Difference**
+
+```javascript
+// ❌ PUT - Complete replacement (dangerous for partial updates)
+PUT /api/users/123
+{
+  "name": "John Doe",
+  "email": "john@example.com"
+  // Missing fields are removed or set to null!
+}
+
+// Old state:
+{
+  "id": 123,
+  "name": "John Smith",
+  "email": "old@example.com",
+  "phone": "555-1234",
+  "address": "123 Main St"
+}
+
+// New state (phone and address lost):
+{
+  "id": 123,
+  "name": "John Doe",
+  "email": "john@example.com"
+  // phone: null
+  // address: null
+}
+
+// ✅ PATCH - Partial update (safe)
+PATCH /api/users/123
+{
+  "name": "John Doe"
+  // Only name is updated, other fields unchanged
+}
+
+// Result:
+{
+  "id": 123,
+  "name": "John Doe",
+  "email": "old@example.com",
+  "phone": "555-1234",
+  "address": "123 Main St"
+}
+```
+
+**Key Rule: Use PATCH for partial updates, PUT for complete replacement**
+
+**2. Simple Merge Strategy (Practical)**
+
+```javascript
+// Most straightforward approach - merge provided fields
+app.patch('/api/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  
+  // Whitelist of updatable fields
+  const allowedFields = ['name', 'email', 'phone', 'address'];
+  
+  // Only update provided fields
+  allowedFields.forEach(field => {
+    if (field in req.body) {
+      user[field] = req.body[field];
+    }
+  });
+  
+  user.updatedAt = new Date();
+  db.users.update(user);
+  res.json(user);
+});
+
+// Request:
+PATCH /api/users/123
+{
+  "name": "Jane Doe",
+  "phone": "555-9999"
+}
+
+// Only name and phone updated, other fields unchanged
+// Result:
+{
+  "id": 123,
+  "name": "Jane Doe",
+  "email": "john@example.com",
+  "phone": "555-9999",
+  "address": "123 Main St",
+  "updatedAt": "2026-01-06T10:30:00Z"
+}
+```
+
+**3. JSON Patch Standard (RFC 6902)**
+
+```javascript
+const jsonpatch = require('fast-json-patch');
+
+// JSON Patch - explicit operations format
+PATCH /api/users/123
+[
+  { "op": "replace", "path": "/name", "value": "Jane Doe" },
+  { "op": "replace", "path": "/phone", "value": "555-9999" },
+  { "op": "add", "path": "/tags", "value": ["vip"] },
+  { "op": "remove", "path": "/address" }
+]
+
+// Implementation
+app.patch('/api/users/:id', (req, res) => {
+  let user = db.users.findById(req.params.id);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  
+  try {
+    // Apply patches atomically (all or nothing)
+    const patchedUser = jsonpatch.applyPatch(user, req.body);
+    db.users.update(patchedUser);
+    res.json(patchedUser);
+  } catch (err) {
+    res.status(400).json({ 
+      error: 'Invalid patch operation', 
+      details: err.message 
+    });
+  }
+});
+
+// Supported operations:
+// - replace: Change field value
+// - add: Add field or array element
+// - remove: Remove field
+// - move: Move field to different path
+// - copy: Copy field value
+// - test: Test field value (conditional)
+
+// Benefits:
+// ✅ Explicit operations
+// ✅ Atomic (all or nothing)
+// ✅ RFC standard
+// ✅ Works with arrays and nested objects
+```
+
+**4. JSON Merge Patch Standard (RFC 7386)**
+
+```javascript
+// Simpler than JSON Patch
+PATCH /api/users/123
+{
+  "name": "Jane Doe",
+  "phone": "555-9999",
+  "address": null  // null means remove field
+}
+
+// Implementation
+app.patch('/api/users/:id', (req, res) => {
+  let user = db.users.findById(req.params.id);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  
+  // Deep merge function
+  const deepMerge = (target, source) => {
+    Object.keys(source).forEach(key => {
+      if (source[key] === null) {
+        delete target[key]; // null removes field
+      } else if (typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        target[key] = deepMerge(target[key] || {}, source[key]);
+      } else {
+        target[key] = source[key];
+      }
+    });
+    return target;
+  };
+  
+  user = deepMerge(user, req.body);
+  user.updatedAt = new Date();
+  db.users.update(user);
+  res.json(user);
+});
+
+// Benefits:
+// ✅ Simple, intuitive syntax
+// ✅ null explicitly removes field
+// ✅ Nested object merge support
+// ✅ RFC standard
+// ✅ Less verbose than JSON Patch
+```
+
+**5. Handling Nested Objects**
+
+```javascript
+// Problem: Updating nested fields without overwriting siblings
+const user = {
+  id: 123,
+  name: "John",
+  address: {
+    street: "123 Main St",
+    city: "NYC",
+    zip: "10001"
+  }
+};
+
+// Request to update only zip code
+PATCH /api/users/123
+{
+  "address": {
+    "zip": "10002"
+  }
+}
+
+// Implementation with deep merge
+app.patch('/api/users/:id', (req, res) => {
+  let user = db.users.findById(req.params.id);
+  
+  const deepMerge = (target, source) => {
+    Object.keys(source).forEach(key => {
+      if (source[key] === null) {
+        delete target[key];
+      } else if (typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        // Recursively merge nested objects
+        target[key] = deepMerge(target[key] || {}, source[key]);
+      } else {
+        target[key] = source[key];
+      }
+    });
+    return target;
+  };
+  
+  user = deepMerge(user, req.body);
+  db.users.update(user);
+  res.json(user);
+});
+
+// Result - only zip updated:
+{
+  "id": 123,
+  "name": "John",
+  "address": {
+    "street": "123 Main St",    // ✓ unchanged
+    "city": "NYC",              // ✓ unchanged
+    "zip": "10002"              // ✓ updated
+  }
+}
+```
+
+**6. Validation for Partial Updates**
+
+```javascript
+const { body, validationResult } = require('express-validator');
+
+// Validation rules for PATCH - all optional
+app.patch('/api/users/:id',
+  body('name').optional().trim().isLength({ min: 2, max: 100 }),
+  body('email').optional().isEmail().normalizeEmail(),
+  body('phone').optional().matches(/^\d{10}$/).withMessage('Phone must be 10 digits'),
+  body('address').optional().isLength({ max: 200 }),
+  (req, res) => {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    
+    const user = db.users.findById(req.params.id);
+    
+    // Only update validated fields that were provided
+    if ('name' in req.body) user.name = req.body.name;
+    if ('email' in req.body) user.email = req.body.email;
+    if ('phone' in req.body) user.phone = req.body.phone;
+    if ('address' in req.body) user.address = req.body.address;
+    
+    db.users.update(user);
+    res.json(user);
+  }
+);
+```
+
+**7. Distinguishing Null vs Undefined**
+
+```javascript
+// Problem: How to know if field wasn't provided vs explicitly set to null?
+
+app.patch('/api/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  
+  // Method 1: Check if field exists in request body
+  if ('phone' in req.body) {
+    if (req.body.phone === null) {
+      delete user.phone; // Explicitly remove
+    } else {
+      user.phone = req.body.phone; // Update
+    }
+  }
+  // If 'phone' not in req.body, don't change it
+  
+  // Method 2: Whitelist approach
+  const updates = {};
+  
+  if ('name' in req.body) updates.name = req.body.name;
+  if ('email' in req.body) updates.email = req.body.email;
+  if ('phone' in req.body) {
+    updates.phone = req.body.phone; // null is allowed
+  }
+  
+  Object.assign(user, updates);
+  db.users.update(user);
+  res.json(user);
+});
+```
+
+**8. Idempotent PATCH Operations**
+
+```javascript
+// PATCH must be idempotent - applying same update multiple times = same result
+
+app.patch('/api/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  
+  // ✅ CORRECT - Idempotent
+  const updates = {};
+  
+  if ('status' in req.body) {
+    updates.status = req.body.status;
+    updates.updatedAt = new Date();
+  }
+  
+  Object.assign(user, updates);
+  db.users.update(user);
+  
+  // First request: Returns user with updated status
+  // Identical second request: Returns same user (not updated again)
+  res.json(user);
+});
+
+// ❌ WRONG - Non-idempotent
+PATCH /api/users/123
+{ "incrementBalance": 10 }
+
+// First request: balance 100 → 110 (correct)
+// Second request: balance 110 → 120 (WRONG - applied twice!)
+
+// ✅ CORRECT version:
+PATCH /api/users/123
+{ "balance": 110 }  // Set to specific value, not increment
+```
+
+**9. Optimistic Locking with ETags**
+
+```javascript
+const crypto = require('crypto');
+
+// GET - returns resource with ETag
+app.get('/api/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  const etag = crypto.createHash('md5')
+    .update(JSON.stringify(user))
+    .digest('hex');
+  
+  res.set('ETag', `"${etag}"`);
+  res.json(user);
+});
+
+// PATCH - checks ETag before updating
+app.patch('/api/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  
+  // Calculate current ETag
+  const currentEtag = crypto.createHash('md5')
+    .update(JSON.stringify(user))
+    .digest('hex');
+  
+  // Get client's ETag from If-Match header
+  const clientEtag = req.headers['if-match']?.replace(/"/g, '');
+  
+  // Check if client has latest version
+  if (clientEtag && clientEtag !== currentEtag) {
+    return res.status(412).json({ 
+      error: 'Conflict - resource was modified by another request',
+      currentEtag: `"${currentEtag}"`
+    });
+  }
+  
+  // Update
+  Object.assign(user, req.body);
+  db.users.update(user);
+  
+  // Return new ETag
+  const newEtag = crypto.createHash('md5')
+    .update(JSON.stringify(user))
+    .digest('hex');
+  
+  res.set('ETag', `"${newEtag}"`);
+  res.status(200).json(user);
+});
+
+// Usage:
+// GET /api/users/123 → Returns ETag: "abc123"
+// PATCH /api/users/123 with If-Match: "abc123" → OK
+// PATCH /api/users/123 with If-Match: "old" → 412 Conflict
+```
+
+**10. Field-Level Authorization**
+
+```javascript
+app.patch('/api/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  const currentUser = req.user; // From authentication middleware
+  
+  // Admin can update any field
+  if (currentUser.role === 'admin') {
+    Object.assign(user, req.body);
+  }
+  // Regular users can only update own profile, specific fields
+  else if (currentUser.id === parseInt(req.params.id)) {
+    const allowedFields = ['name', 'email', 'phone'];
+    const updates = {};
+    
+    allowedFields.forEach(field => {
+      if (field in req.body) {
+        updates[field] = req.body[field];
+      }
+    });
+    
+    // Prevent unauthorized field updates
+    const deniedFields = Object.keys(req.body).filter(f => !allowedFields.includes(f));
+    if (deniedFields.length > 0) {
+      return res.status(403).json({ 
+        error: `Cannot update fields: ${deniedFields.join(', ')}`
+      });
+    }
+    
+    Object.assign(user, updates);
+  }
+  // Cannot update other users
+  else {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  
+  db.users.update(user);
+  res.json(user);
+});
+```
+
+**11. Database-Specific Implementations**
+
+```javascript
+// MongoDB - Only update provided fields
+app.patch('/api/users/:id', async (req, res) => {
+  const user = await User.findByIdAndUpdate(
+    req.params.id,
+    { $set: req.body }, // $set: only update provided fields
+    { new: true, runValidators: true }
+  );
+  
+  if (!user) return res.status(404).json({ error: 'Not found' });
+  res.json(user);
+});
+
+// SQL - Dynamic UPDATE query
+app.patch('/api/users/:id', (req, res) => {
+  const fields = Object.keys(req.body);
+  if (fields.length === 0) return res.status(400).json({ error: 'No fields provided' });
+  
+  const values = Object.values(req.body);
+  const setClause = fields.map((f, i) => `${f} = $${i + 1}`).join(', ');
+  const query = `UPDATE users SET ${setClause}, updated_at = NOW() WHERE id = $${fields.length + 1} RETURNING *`;
+  
+  db.query(query, [...values, req.params.id], (err, result) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    res.json(result.rows[0]);
+  });
+});
+
+// Prisma - Built-in support
+app.patch('/api/users/:id', async (req, res) => {
+  const user = await prisma.user.update({
+    where: { id: parseInt(req.params.id) },
+    data: req.body // Only provided fields
+  });
+  
+  res.json(user);
+});
+```
+
+**12. HTTP Status Codes for PATCH**
+
+```javascript
+// 200 OK - Successful update, return full resource
+PATCH /api/users/123
+{ "name": "Jane" }
+→ 200 OK
+{ "id": 123, "name": "Jane", ... }
+
+// 204 No Content - Successful update, no body
+PATCH /api/users/123
+{ "name": "Jane" }
+→ 204 No Content
+
+// 400 Bad Request - Validation failed
+PATCH /api/users/123
+{ "email": "invalid-email" }
+→ 400 Bad Request
+{ "errors": [{ "field": "email", "message": "Invalid email" }] }
+
+// 403 Forbidden - Unauthorized to update field
+PATCH /api/users/123
+{ "role": "admin" }  // User not allowed to change role
+→ 403 Forbidden
+
+// 404 Not Found - Resource doesn't exist
+PATCH /api/users/999
+{ "name": "Jane" }
+→ 404 Not Found
+
+// 409 Conflict - Edit conflict (stale ETag)
+PATCH /api/users/123
+If-Match: "old-etag"
+→ 409 Conflict
+{ "error": "Resource was modified", "currentEtag": "new-etag" }
+
+// 412 Precondition Failed - ETag doesn't match
+PATCH /api/users/123
+If-Match: "wrong-etag"
+→ 412 Precondition Failed
+
+// 422 Unprocessable Entity - Valid JSON but semantically invalid
+PATCH /api/users/123
+{ "age": -5 }  // Negative age invalid
+→ 422 Unprocessable Entity
+```
+
+**13. Complete PATCH Example**
+
+```javascript
+const express = require('express');
+const { body, validationResult } = require('express-validator');
+const crypto = require('crypto');
+
+const app = express();
+app.use(express.json());
+
+const users = new Map([
+  [1, { id: 1, name: 'John', email: 'john@example.com', phone: '555-1234' }]
+]);
+
+// GET with ETag
+app.get('/api/users/:id', (req, res) => {
+  const user = users.get(parseInt(req.params.id));
+  if (!user) return res.status(404).json({ error: 'Not found' });
+  
+  const etag = crypto.createHash('md5').update(JSON.stringify(user)).digest('hex');
+  res.set('ETag', `"${etag}"`);
+  res.json(user);
+});
+
+// PATCH with validation and ETag
+app.patch('/api/users/:id',
+  body('name').optional().isString().trim(),
+  body('email').optional().isEmail(),
+  body('phone').optional().isString(),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    
+    const user = users.get(parseInt(req.params.id));
+    if (!user) return res.status(404).json({ error: 'Not found' });
+    
+    // Check ETag
+    const currentEtag = crypto.createHash('md5').update(JSON.stringify(user)).digest('hex');
+    const clientEtag = req.headers['if-match']?.replace(/"/g, '');
+    if (clientEtag && clientEtag !== currentEtag) {
+      return res.status(412).json({ error: 'Conflict', currentEtag: `"${currentEtag}"` });
+    }
+    
+    // Update only provided fields
+    if ('name' in req.body) user.name = req.body.name;
+    if ('email' in req.body) user.email = req.body.email;
+    if ('phone' in req.body) user.phone = req.body.phone;
+    
+    const newEtag = crypto.createHash('md5').update(JSON.stringify(user)).digest('hex');
+    res.set('ETag', `"${newEtag}"`);
+    res.json(user);
+  }
+);
+
+app.listen(3000);
+```
+
+**14. Partial Update Best Practices**
+
+| Practice | Reason |
+|----------|--------|
+| **Use PATCH** | For partial updates, PUT for full replacement |
+| **Choose format** | Merge Patch (simple) vs JSON Patch (explicit operations) |
+| **Validate input** | Only validate fields being updated |
+| **Whitelist fields** | Only allow updating specific fields |
+| **Make idempotent** | Same request = same result, not cumulative |
+| **Use ETags** | Prevent conflicts with If-Match header |
+| **Field security** | Enforce authorization per field |
+| **Return full resource** | Include all fields in response |
+| **Use correct status** | 200 OK, 204 No Content, 400, 404, 409, 412 |
+| **Document fields** | Clearly list which fields can be updated |
+| **Log changes** | Track who updated what and when |
+
+---
+
 ## Summary
 
 This guide covers essential security interview questions including:
@@ -3716,7 +4330,8 @@ This guide covers essential security interview questions including:
 9. **API Stability**: Versioning, deprecation, testing, monitoring, schema evolution, deployment strategies
 10. **Backward Compatibility**: Additive changes, avoiding breaking changes, parameter compatibility, testing, monitoring
 11. **Statelessness**: Scalability, fault tolerance, service independence, cost efficiency, REST compliance
-12. **Best Practices**: Security and stability guidelines and standards
+12. **Partial Updates**: PATCH vs PUT, merge strategies, JSON Patch, JSON Merge Patch, validation, ETags, authorization
+13. **Best Practices**: Security and stability guidelines and standards
 
 This guide covers essential security interview questions including:
 

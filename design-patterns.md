@@ -1734,6 +1734,423 @@ Monolith DB → CDC Tool (Debezium) → Kafka Topic → New Service
 
 ---
 
+### 2. Saga Pattern
+
+#### What is the Saga Pattern?
+
+The Saga Pattern is a way to handle distributed transactions across multiple microservices without using traditional ACID transactions (which don't work well across service boundaries). It ensures consistency and coordinates operations across multiple services.
+
+#### Core Problem:
+
+In a monolithic system, you can use a single transaction to ensure atomicity across multiple operations. In microservices, each service has its own database, so traditional transactions don't work:
+
+```
+Monolith (Single Transaction):
+  BEGIN TRANSACTION
+    1. Create Order
+    2. Reserve Inventory
+    3. Process Payment
+  COMMIT or ROLLBACK (atomic)
+
+Microservices (No ACID across services):
+  Order Service → Inventory Service → Payment Service
+  Each has own DB - can't use transactions!
+```
+
+#### Two Main Approaches:
+
+---
+
+**1. Choreography (Event-Driven / Decentralized)**
+
+Services listen to events and trigger the next step. Each service knows what to do when it receives an event:
+
+```
+Event Flow:
+1. Order Service creates order → publishes "OrderCreated"
+2. Inventory Service listens → reserves inventory → publishes "InventoryReserved"
+3. Payment Service listens → processes payment → publishes "PaymentProcessed"
+4. Order Service listens → confirms order
+
+If Payment fails → publishes "PaymentFailed"
+2. Inventory Service listens → releases inventory
+```
+
+**Example (Node.js + Event Bus):**
+
+```javascript
+// Order Service
+eventBus.subscribe('createOrder', async (orderData) => {
+  const order = await orders.create(orderData);
+  eventBus.publish('order.created', { 
+    orderId: order.id, 
+    items: order.items 
+  });
+});
+
+// Handle payment failure - compensation
+eventBus.subscribe('payment.failed', async (event) => {
+  await orders.update(event.orderId, { status: 'FAILED' });
+  eventBus.publish('order.cancelled', { orderId: event.orderId });
+});
+
+// Inventory Service
+eventBus.subscribe('order.created', async (event) => {
+  try {
+    await inventory.reserve(event.items);
+    eventBus.publish('inventory.reserved', { orderId: event.orderId });
+  } catch (error) {
+    eventBus.publish('inventory.failed', { orderId: event.orderId });
+  }
+});
+
+// Payment Service
+eventBus.subscribe('inventory.reserved', async (event) => {
+  try {
+    const result = await payment.process(event.orderId);
+    eventBus.publish('payment.completed', { orderId: event.orderId });
+  } catch (error) {
+    eventBus.publish('payment.failed', { orderId: event.orderId });
+  }
+});
+
+// Compensation (Rollback) - triggered by failure event
+eventBus.subscribe('payment.failed', async (event) => {
+  // Release reserved inventory
+  await inventory.release(event.orderId);
+});
+```
+
+**Choreography Flow:**
+
+```
+Order Service          Inventory Service         Payment Service
+      │                       │                        │
+      │─ Publish ─────────────>                        │
+      │  OrderCreated          │                        │
+      │                        │                        │
+      │              ReserveInventory                   │
+      │                        │                        │
+      │<─ Publish ─────────────┤─ Publish ─────────────>
+      │  InventoryReserved           ProcessPayment    │
+      │                        │                        │
+      │<─ Publish ───────────────────────────────────────
+      │     PaymentCompleted                           │
+      │                        │                        │
+      ├─ UpdateOrder           │                        │
+      │  Status=CONFIRMED      │                        │
+```
+
+**Pros of Choreography:**
+- Simple services (each handles its own logic)
+- Loose coupling (event-based)
+- Good for simple workflows
+
+**Cons of Choreography:**
+- Complex flow (hard to understand end-to-end)
+- Difficult to debug (distributed events)
+- Hard to test entire saga
+- Difficult to monitor and track
+
+---
+
+**2. Orchestration (Centralized / Coordinator)**
+
+A central orchestrator manages the entire saga workflow. It knows the steps and calls services in sequence:
+
+```
+Order Orchestrator
+  ├─ Call Order Service → Create order
+  ├─ Call Inventory Service → Reserve inventory
+  ├─ Call Payment Service → Process payment
+  └─ On failure → Call compensation actions
+```
+
+**Example (Node.js):**
+
+```javascript
+class OrderSagaOrchestrator {
+  async executeSaga(orderData) {
+    const sagaId = generateId();
+    const sagaState = { orderId: null, status: 'STARTED' };
+
+    try {
+      console.log(`[${sagaId}] Starting order saga...`);
+
+      // Step 1: Create Order
+      sagaState.orderId = await orderService.createOrder(orderData);
+      console.log(`[${sagaId}] ✓ Order created: ${sagaState.orderId}`);
+
+      // Step 2: Reserve Inventory
+      await inventoryService.reserve({
+        orderId: sagaState.orderId,
+        items: orderData.items
+      });
+      console.log(`[${sagaId}] ✓ Inventory reserved`);
+
+      // Step 3: Process Payment
+      await paymentService.process({
+        orderId: sagaState.orderId,
+        amount: orderData.totalAmount
+      });
+      console.log(`[${sagaId}] ✓ Payment processed`);
+
+      // Success
+      sagaState.status = 'COMPLETED';
+      await orderService.updateStatus(sagaState.orderId, 'CONFIRMED');
+      console.log(`[${sagaId}] ✓ Order confirmed`);
+
+    } catch (error) {
+      console.error(`[${sagaId}] ✗ Saga failed: ${error.message}`);
+      sagaState.status = 'FAILED';
+      
+      // Compensation: Rollback in reverse order
+      await this.compensate(sagaState);
+    }
+
+    return sagaState;
+  }
+
+  private async compensate(sagaState) {
+    try {
+      console.log('Starting compensation...');
+
+      // Step 3 compensation: Refund payment
+      if (sagaState.paymentProcessed) {
+        await paymentService.refund(sagaState.orderId);
+        console.log('✓ Payment refunded');
+      }
+
+      // Step 2 compensation: Release inventory
+      if (sagaState.orderId) {
+        await inventoryService.release(sagaState.orderId);
+        console.log('✓ Inventory released');
+      }
+
+      // Step 1 compensation: Cancel order
+      await orderService.cancel(sagaState.orderId);
+      console.log('✓ Order cancelled');
+
+    } catch (error) {
+      console.error('Compensation failed:', error);
+      // Log to dead letter queue for manual intervention
+    }
+  }
+}
+
+// Usage
+const orchestrator = new OrderSagaOrchestrator();
+const result = await orchestrator.executeSaga({
+  items: [{ id: 'PROD-1', qty: 2 }],
+  totalAmount: 99.99
+});
+```
+
+**Orchestration Flow:**
+
+```
+                    Order Saga Orchestrator
+                            │
+                    ┌───────┼───────┐
+                    │       │       │
+                    ▼       ▼       ▼
+              Order Svc  Inventory  Payment Svc
+                    │       │       │
+              CreateOrder  Reserve ProcessPayment
+                    │       │       │
+                    └───────┼───────┘
+                            │
+                      All Success?
+                       ├─ YES → Confirm
+                       └─ NO → Compensate
+                              ├─ Refund
+                              ├─ Release Inventory
+                              └─ Cancel Order
+```
+
+**Pros of Orchestration:**
+- Clear, centralized workflow
+- Easy to understand (one place to see flow)
+- Easier to test and debug
+- Better monitoring (orchestrator sees all steps)
+
+**Cons of Orchestration:**
+- Tight coupling (orchestrator knows all services)
+- Orchestrator is a single point of failure
+- Orchestrator gets complex as saga grows
+- More code to maintain
+
+---
+
+**Comparison: Choreography vs Orchestration**
+
+| Aspect | Choreography | Orchestration |
+|--------|--------------|---------------|
+| **Complexity** | Simple services, complex flow | Complex orchestrator, simple services |
+| **Visibility** | Hard (distributed events) | Clear (centralized) |
+| **Coupling** | Loose, event-based | Tight (orchestrator knows all) |
+| **Testing** | Hard (many services involved) | Easier (test orchestrator logic) |
+| **Debugging** | Harder (trace across events) | Easier (central point) |
+| **Scalability** | Good for simple flows | Better for complex flows |
+| **Failure Handling** | Each service handles own failures | Orchestrator handles |
+| **Flexibility** | Hard to change flow | Easy to modify |
+| **Recommended** | Simple sagas (2-3 steps) | Complex sagas (5+ steps) |
+
+---
+
+#### Handling Failures & Compensation:
+
+**1. Compensating Transactions (Rollback):**
+
+Each forward transaction has a compensating transaction:
+
+```
+Forward:                        Compensating:
+CreateOrder      ←────────────► CancelOrder
+ReserveInventory ←────────────► ReleaseInventory
+ProcessPayment   ←────────────► RefundPayment
+```
+
+**2. Idempotency (Critical for Reliability):**
+
+If a compensation is called twice, it must produce the same result:
+
+```javascript
+async function releaseInventory(orderId, idempotencyKey) {
+  // Check if already released
+  const alreadyReleased = await db.compensations.findOne({
+    orderId,
+    action: 'RELEASE_INVENTORY',
+    idempotencyKey
+  });
+
+  if (alreadyReleased) {
+    return alreadyReleased.result; // Return cached result
+  }
+
+  // Perform release
+  const result = await inventory.release(orderId);
+
+  // Store result for idempotency
+  await db.compensations.insert({
+    orderId,
+    action: 'RELEASE_INVENTORY',
+    idempotencyKey,
+    result,
+    timestamp: new Date()
+  });
+
+  return result;
+}
+```
+
+**3. Timeout & Retry Logic:**
+
+```javascript
+const sagaConfig = {
+  maxRetries: 3,
+  retryDelay: 1000,        // 1 second
+  timeout: 30000           // 30 second timeout per step
+};
+
+async function executeWithRetry(fn, config) {
+  for (let attempt = 1; attempt <= config.maxRetries; attempt++) {
+    try {
+      return await Promise.race([
+        fn(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout')), config.timeout)
+        )
+      ]);
+    } catch (error) {
+      if (attempt === config.maxRetries) throw error;
+      const delay = config.retryDelay * Math.pow(2, attempt - 1); // Exponential backoff
+      console.log(`Retry attempt ${attempt} after ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+```
+
+---
+
+#### Real-World Saga Flow Example:
+
+```
+1. Customer places order:
+   ├─ Item A (qty: 2)
+   ├─ Item B (qty: 1)
+   └─ Total: $150
+
+2. ORDER SERVICE
+   ├─ Create Order (status: PENDING)
+   ├─ Publish: "order.created" (Orchestration) or call directly
+   └─ Store in database
+
+3. INVENTORY SERVICE
+   ├─ Receive: "order.created"
+   ├─ Check stock:
+   │  ├─ Item A: 5 in stock ✓
+   │  └─ Item B: 0 in stock ✗ FAIL
+   ├─ FAILURE: Publish "inventory.failed"
+
+4. PAYMENT SERVICE
+   ├─ Never called (previous step failed)
+
+5. COMPENSATION
+   ├─ No payment to refund
+   ├─ No inventory to release (wasn't reserved)
+   ├─ Cancel Order (update status: FAILED)
+   └─ Notify customer: "Item B out of stock"
+```
+
+---
+
+#### When to Use Saga Pattern:
+
+✓ Distributed transactions across microservices
+✓ Need to maintain consistency across services
+✓ Can accept eventual consistency (not immediate ACID)
+✓ Complex multi-step workflows
+✓ Need graceful failure handling and compensation
+
+**When NOT to Use:**
+
+✗ Monolithic application (use traditional transactions)
+✗ Strong immediate ACID consistency required
+✗ Simple request-response flows
+✗ Real-time atomicity critical (some financial transactions)
+
+---
+
+#### Popular Tools & Frameworks:
+
+- **Apache Kafka** + custom saga logic
+- **RabbitMQ** + choreography
+- **AWS Step Functions** (orchestration service)
+- **Temporal.io** (workflow engine)
+- **Cadence** (distributed workflow)
+- **Axon Framework** (event sourcing + sagas)
+- **Spring Cloud Contract** + **Spring Cloud Stream**
+- **MassTransit** (.NET)
+
+---
+
+#### Saga Pattern Best Practices:
+
+1. **Keep steps small:** Each step should be a single business action
+2. **Make compensations idempotent:** Same call twice = same result
+3. **Use timeouts:** Don't wait forever for a response
+4. **Implement retry logic:** Handle transient failures
+5. **Monitor closely:** Track saga progress and failures
+6. **Log everything:** Debug distributed sagas with comprehensive logs
+7. **Use correlation IDs:** Track saga across services
+8. **Design for failure:** Always have a compensation strategy
+9. **Test compensations:** Verify rollback logic works
+10. **Choose right approach:** Choreography for simple, Orchestration for complex
+
+---
+
 ## Best Practices
 
 1. **Don't Force Patterns**: Use patterns when they solve a real problem, not just for the sake of using them

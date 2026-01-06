@@ -279,6 +279,279 @@ app.post('/upload', upload.single('file'), (req, res) => {
 - **cookie-parser**
 - **express-session**
 
+### 26. How do you structure a REST API project in Express.js?
+
+**Answer:**
+
+Project structure depends on the size and complexity. Here are the common patterns:
+
+**1. Simple Project Structure (Small API)**
+
+```
+my-api/
+├── src/
+│   ├── app.js                 # Express app setup
+│   ├── server.js              # Server entry point
+│   ├── routes/
+│   │   └── users.js           # User routes
+│   ├── controllers/
+│   │   └── userController.js  # User logic
+│   ├── models/
+│   │   └── User.js            # User schema/model
+│   ├── middleware/
+│   │   └── auth.js            # Auth middleware
+│   └── config/
+│       └── database.js        # DB config
+├── .env
+├── .gitignore
+├── package.json
+└── README.md
+```
+
+**2. MVC Pattern (Medium Project)**
+
+```
+my-api/
+├── src/
+│   ├── app.js
+│   ├── server.js
+│   ├── config/
+│   │   ├── database.js
+│   │   ├── env.js
+│   │   └── constants.js
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── Product.js
+│   │   └── Order.js
+│   ├── controllers/
+│   │   ├── userController.js
+│   │   ├── productController.js
+│   │   └── orderController.js
+│   ├── routes/
+│   │   ├── index.js
+│   │   ├── users.js
+│   │   ├── products.js
+│   │   └── orders.js
+│   ├── middleware/
+│   │   ├── auth.js
+│   │   ├── errorHandler.js
+│   │   └── validation.js
+│   ├── utils/
+│   │   ├── logger.js
+│   │   ├── responses.js
+│   │   └── helpers.js
+│   └── services/
+│       ├── userService.js
+│       └── emailService.js
+├── tests/
+│   ├── unit/
+│   └── integration/
+├── .env
+├── .gitignore
+├── package.json
+└── README.md
+```
+
+**3. Layered/Modular Architecture (Large Project)**
+
+```
+my-api/
+├── src/
+│   ├── app.js
+│   ├── server.js
+│   ├── config/
+│   │   ├── database.js
+│   │   ├── env.js
+│   │   ├── logger.js
+│   │   └── constants.js
+│   ├── modules/
+│   │   ├── users/
+│   │   │   ├── user.model.js
+│   │   │   ├── user.controller.js
+│   │   │   ├── user.service.js
+│   │   │   ├── user.validation.js
+│   │   │   ├── user.routes.js
+│   │   │   └── user.test.js
+│   │   ├── products/
+│   │   │   ├── product.model.js
+│   │   │   ├── product.controller.js
+│   │   │   ├── product.service.js
+│   │   │   ├── product.routes.js
+│   │   │   └── product.test.js
+│   │   └── orders/
+│   │       ├── order.model.js
+│   │       ├── order.controller.js
+│   │       ├── order.service.js
+│   │       └── order.routes.js
+│   ├── shared/
+│   │   ├── middleware/
+│   │   │   ├── auth.js
+│   │   │   ├── errorHandler.js
+│   │   │   ├── validation.js
+│   │   │   └── rateLimit.js
+│   │   ├── utils/
+│   │   │   ├── logger.js
+│   │   │   ├── responses.js
+│   │   │   ├── helpers.js
+│   │   │   └── errors.js
+│   │   └── decorators/
+│   │       └── asyncHandler.js
+│   └── routes.js            # Central route registry
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── fixtures/
+├── docs/
+│   └── api.md
+├── .env
+├── .env.example
+├── .gitignore
+├── jest.config.js
+├── package.json
+└── README.md
+```
+
+**Example Implementation:**
+
+**app.js:**
+```javascript
+const express = require('express');
+const helmet = require('helmet');
+const userRoutes = require('./routes/users');
+const productRoutes = require('./routes/products');
+const errorHandler = require('./middleware/errorHandler');
+
+const app = express();
+
+// Middleware
+app.use(helmet());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
+app.use('/api/users', userRoutes);
+app.use('/api/products', productRoutes);
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK' });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not Found' });
+});
+
+// Error handling
+app.use(errorHandler);
+
+module.exports = app;
+```
+
+**routes/users.js:**
+```javascript
+const express = require('express');
+const userController = require('../controllers/userController');
+const authMiddleware = require('../middleware/auth');
+
+const router = express.Router();
+
+router.post('/', userController.createUser);
+router.get('/', authMiddleware, userController.getUsers);
+router.get('/:id', authMiddleware, userController.getUserById);
+router.put('/:id', authMiddleware, userController.updateUser);
+router.delete('/:id', authMiddleware, userController.deleteUser);
+
+module.exports = router;
+```
+
+**controllers/userController.js:**
+```javascript
+const userService = require('../services/userService');
+
+exports.createUser = async (req, res, next) => {
+  try {
+    const user = await userService.createUser(req.body);
+    res.status(201).json(user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getUsers = async (req, res, next) => {
+  try {
+    const users = await userService.getAllUsers();
+    res.json(users);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getUserById = async (req, res, next) => {
+  try {
+    const user = await userService.getUserById(req.params.id);
+    res.json(user);
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+**services/userService.js:**
+```javascript
+const User = require('../models/User');
+
+exports.createUser = async (userData) => {
+  const user = new User(userData);
+  return await user.save();
+};
+
+exports.getAllUsers = async () => {
+  return await User.find();
+};
+
+exports.getUserById = async (id) => {
+  return await User.findById(id);
+};
+```
+
+**middleware/auth.js:**
+```javascript
+const authMiddleware = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  
+  try {
+    const decoded = verifyToken(token);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(403).json({ error: 'Invalid token' });
+  }
+};
+
+module.exports = authMiddleware;
+```
+
+**Recommendations:**
+
+- **Small projects (< 5 routes):** Use simple structure
+- **Medium projects (5-20 routes):** Use MVC pattern
+- **Large projects (20+ routes, multiple teams):** Use modular/layered architecture
+
+**Key Principles:**
+
+1. **Separation of Concerns:** Keep routes, controllers, services, models separate
+2. **Single Responsibility:** Each file should have one reason to change
+3. **Reusability:** Share utility functions and middleware across modules
+4. **Testability:** Each layer should be independently testable
+5. **Scalability:** Easy to add new features without modifying existing code
+6. **Configuration Management:** Use `.env` files for environment variables
+7. **Error Handling:** Centralized error handling middleware
+
 ---
 
 ## Conclusion

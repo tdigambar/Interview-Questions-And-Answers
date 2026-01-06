@@ -2801,7 +2801,454 @@ const notifyConsumers = async () => {
 
 ---
 
+### 14. How would you maintain backward compatibility?
+
+**Answer:**
+Maintaining backward compatibility is critical for long-term API adoption. It requires careful design decisions and strategic planning to avoid breaking existing clients while evolving the API.
+
+**1. Additive Changes (Always Safe)**
+
+```javascript
+// ✅ SAFE: Adding new optional fields
+// Old response
+{ id: 1, name: "John", email: "john@example.com" }
+
+// New response - clients ignoring new fields still work
+{ id: 1, name: "John", email: "john@example.com", createdAt: "2023-01-01", status: "active" }
+
+// Implementation
+app.get('/v2/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    // New optional fields - old clients ignore these
+    createdAt: user.created_at || null,
+    updatedAt: user.updated_at || null,
+    status: user.status || 'active'
+  });
+});
+```
+
+**Key Rule: Never remove fields, only add new ones**
+
+**2. Avoiding Breaking Changes**
+
+```javascript
+// ❌ BREAKING: Removing fields
+// Old clients expect these
+{ id: 1, name: "John", email: "john@example.com" }
+
+// ✅ SAFE: Keep old format, add envelope
+{ 
+  id: 1, 
+  name: "John", 
+  email: "john@example.com",
+  // New structure wrapped in new property
+  profile: {
+    bio: "Software Engineer",
+    avatar: "https://...",
+    socialLinks: { twitter: "..." }
+  }
+}
+
+// Implementation
+app.get('/v2/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  
+  res.json({
+    // Keep all original fields for compatibility
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    
+    // Add new structure
+    profile: {
+      bio: user.bio,
+      avatar: user.avatar_url,
+      socialLinks: user.social_links
+    }
+  });
+});
+```
+
+**3. Request Parameter Compatibility**
+
+```javascript
+// Support old and new parameter names simultaneously
+app.get('/users', (req, res) => {
+  // Accept both 'sort_by' (old) and 'sortBy' (new)
+  const sortBy = req.query.sortBy || req.query.sort_by || 'name';
+  
+  // Accept both 'max_results' (old) and 'limit' (new)
+  const limit = req.query.limit || req.query.max_results || 10;
+  
+  // Accept both 'offset' (old) and 'page' (new)
+  const offset = req.query.offset || ((req.query.page || 1) - 1) * limit;
+  
+  const users = db.users.find({ sort: sortBy, limit, offset });
+  res.json(users);
+});
+
+// Add deprecation warnings for old parameters
+app.get('/users', (req, res, next) => {
+  if (req.query.sort_by) {
+    res.set('Warning', '299 - "sort_by parameter deprecated, use sortBy instead"');
+  }
+  if (req.query.max_results) {
+    res.set('Warning', '299 - "max_results parameter deprecated, use limit instead"');
+  }
+  next();
+});
+```
+
+**4. Response Format Evolution**
+
+```javascript
+// Use Accept header or custom header for format negotiation
+app.get('/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  const format = req.headers['x-response-format'] || 'v1';
+  
+  if (format === 'v1') {
+    // Old format for legacy clients
+    return res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email
+    });
+  }
+  
+  // v2 format with additional fields
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    metadata: {
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+      version: 'v2'
+    }
+  });
+});
+```
+
+**5. Database Schema Compatibility**
+
+```javascript
+// Migration: Add new column without breaking old code
+exports.up = (knex) => {
+  return knex.schema.table('users', (table) => {
+    // Make nullable with default
+    table.string('phone').nullable().defaultTo(null);
+    // Or with a default value for required fields
+    table.string('status').defaultTo('active');
+  });
+};
+
+// Old code continues working unchanged
+app.get('/v1/users/:id', async (req, res) => {
+  const user = await db('users').where({ id: req.params.id }).first();
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email
+    // phone and status columns exist but are ignored
+  });
+});
+
+// New code uses new fields
+app.get('/v2/users/:id', async (req, res) => {
+  const user = await db('users').where({ id: req.params.id }).first();
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    status: user.status
+  });
+});
+```
+
+**6. HTTP Status Code Consistency**
+
+```javascript
+// ✅ Use standard status codes consistently
+app.get('/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  
+  if (!user) {
+    // Always use 404 for not found
+    return res.status(404).json({ error: 'User not found' });
+  }
+  
+  // Always use 200 for success
+  res.status(200).json(user);
+});
+
+// ❌ DON'T change status codes for existing endpoints
+// Example of breaking change:
+// Old: GET /users → 200 with array
+// New: GET /users → 201 with object (BREAKS COMPATIBILITY)
+
+// Instead create new endpoint or extend current response
+```
+
+**7. JSON Type Conversion**
+
+```javascript
+// Handle type conversions gracefully
+app.get('/products/:id', (req, res) => {
+  const product = db.products.findById(req.params.id);
+  
+  res.json({
+    id: product.id,
+    name: product.name,
+    // Old clients expect string, new clients accept number
+    price: parseFloat(product.price),
+    // Always use ISO format for dates
+    createdAt: product.created_at.toISOString(),
+    // Accept both true/false and 'yes'/'no' on input
+    active: product.active === true || product.active === 'yes'
+  });
+});
+
+// Validate incoming data flexibly
+app.post('/products', (req, res) => {
+  const { name, price, active } = req.body;
+  
+  // Normalize input
+  const normalizedPrice = typeof price === 'string' ? parseFloat(price) : price;
+  const normalizedActive = active === 'yes' || active === true;
+  
+  const product = db.products.create({
+    name,
+    price: normalizedPrice,
+    active: normalizedActive
+  });
+  
+  res.json(product);
+});
+```
+
+**8. Testing Backward Compatibility**
+
+```javascript
+// Contract testing
+describe('Backward Compatibility Tests', () => {
+  test('v2 response contains all v1 fields', async () => {
+    const v1Response = await fetch('http://api/v1/users/1');
+    const v2Response = await fetch('http://api/v2/users/1');
+    
+    const v1Data = await v1Response.json();
+    const v2Data = await v2Response.json();
+    
+    // v1 fields must exist in v2 with same values
+    expect(v2Data.id).toBe(v1Data.id);
+    expect(v2Data.name).toBe(v1Data.name);
+    expect(v2Data.email).toBe(v1Data.email);
+  });
+  
+  test('old clients can consume new responses', async () => {
+    const response = await fetch('http://api/v2/users/1');
+    const data = await response.json();
+    
+    // Simulate old client reading only old fields
+    const oldClientView = {
+      id: data.id,
+      name: data.name,
+      email: data.email
+    };
+    
+    expect(oldClientView.id).toBeDefined();
+    expect(oldClientView.name).toBeDefined();
+    expect(oldClientView.email).toBeDefined();
+  });
+  
+  test('deprecated parameters still work', async () => {
+    const oldStyle = await fetch('http://api/users?sort_by=name&max_results=10');
+    const newStyle = await fetch('http://api/users?sortBy=name&limit=10');
+    
+    expect(oldStyle.status).toBe(200);
+    expect(newStyle.status).toBe(200);
+    
+    const oldData = await oldStyle.json();
+    const newData = await newStyle.json();
+    
+    expect(oldData).toEqual(newData);
+  });
+  
+  test('response types remain consistent', async () => {
+    const response = await fetch('http://api/v2/users/1');
+    const data = await response.json();
+    
+    // Verify types haven't changed
+    expect(typeof data.id).toBe('number');
+    expect(typeof data.name).toBe('string');
+    expect(typeof data.email).toBe('string');
+  });
+});
+```
+
+**9. Monitoring Backward Compatibility**
+
+```javascript
+// Track usage of deprecated features
+const deprecationMetrics = new Map();
+
+const incrementMetric = (key) => {
+  deprecationMetrics.set(key, (deprecationMetrics.get(key) || 0) + 1);
+};
+
+app.use((req, res, next) => {
+  // Track old parameter usage
+  if (req.query.sort_by) {
+    incrementMetric('deprecated_param:sort_by');
+  }
+  if (req.query.max_results) {
+    incrementMetric('deprecated_param:max_results');
+  }
+  
+  // Track API version usage
+  const version = req.path.split('/')[2]; // v1, v2, etc
+  if (version) {
+    incrementMetric(`api_version:${version}`);
+  }
+  
+  next();
+});
+
+// Alert when deprecated features still in heavy use
+setInterval(() => {
+  const sortByUsage = deprecationMetrics.get('deprecated_param:sort_by') || 0;
+  if (sortByUsage > 100) { // 100+ requests in last hour
+    logger.warn(`sort_by parameter still heavily used: ${sortByUsage} requests`);
+  }
+}, 3600000); // Every hour
+```
+
+**10. Client SDK Compatibility**
+
+```javascript
+// Maintain SDK versions alongside API versions
+class UsersClient {
+  constructor(apiVersion = 'v1') {
+    this.apiVersion = apiVersion;
+    this.baseUrl = `http://api/${apiVersion}`;
+  }
+  
+  async getUser(id) {
+    const response = await fetch(`${this.baseUrl}/users/${id}`);
+    const data = await response.json();
+    
+    // Normalize response format for client code
+    return this._normalizeUser(data);
+  }
+  
+  _normalizeUser(data) {
+    // Transform API response to consistent client format
+    // Works with both v1 (no metadata) and v2 (with metadata)
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      createdAt: data.createdAt || data.metadata?.createdAt,
+      updatedAt: data.updatedAt || data.metadata?.updatedAt,
+      status: data.status || 'active'
+    };
+  }
+}
+
+// Client code remains same across API versions
+const client = new UsersClient('v2');
+const user = await client.getUser(1);
+console.log(user.name); // Works regardless of API version
+```
+
+**11. Deprecation Path Timeline**
+
+```javascript
+const apiVersions = {
+  v1: {
+    releaseDate: '2023-01-01',
+    status: 'stable',
+    supportUntil: '2025-01-01',
+    sunsetDate: '2026-01-01'
+  },
+  
+  v2: {
+    releaseDate: '2024-01-01',
+    status: 'stable',
+    supportUntil: '2026-01-01',
+    breakingChanges: [], // No breaking changes from v1
+    migrationGuide: 'https://docs.api.com/v1-to-v2'
+  },
+  
+  v3: {
+    releaseDate: '2025-01-01',
+    status: 'current',
+    supportUntil: '2027-01-01',
+    breakingChanges: [
+      {
+        change: 'Removed /users/search endpoint',
+        replacement: 'Use GET /users?search=...',
+        impact: 'Low - used in <5% of requests'
+      }
+    ],
+    migrationGuide: 'https://docs.api.com/v2-to-v3'
+  }
+};
+```
+
+**12. Backward Compatibility Guidelines**
+
+| Do | Don't |
+|----|----|
+| ✅ Add optional fields | ❌ Remove existing fields |
+| ✅ Add new endpoints | ❌ Change response format |
+| ✅ Support old parameters | ❌ Change status codes |
+| ✅ Extend objects | ❌ Flatten structures |
+| ✅ Add nullable columns | ❌ Change field types |
+| ✅ Document deprecations | ❌ Surprise breaking changes |
+| ✅ Provide migration guides | ❌ Remove old versions abruptly |
+| ✅ Support multiple versions | ❌ Force single version |
+
+**13. Backward Compatibility Checklist**
+
+- [ ] All new fields are optional or have defaults
+- [ ] No fields removed from existing endpoints
+- [ ] Old query parameters still accepted and work
+- [ ] Response format extended, not replaced
+- [ ] HTTP status codes unchanged for existing endpoints
+- [ ] Database migrations backward compatible
+- [ ] Deprecation headers added for old features
+- [ ] Contract tests passing (v1, v2, v3 compatibility)
+- [ ] Deprecated feature usage monitored
+- [ ] Client SDKs handle multiple response formats
+- [ ] Documentation includes migration guides
+- [ ] Changelog documents all breaking changes clearly
+- [ ] Support timeline clearly communicated
+- [ ] Comprehensive test coverage for compatibility
+- [ ] Performance impact of backward compatibility measured
+
+---
+
 ## Summary
+
+This guide covers essential security interview questions including:
+
+1. **Authentication**: SSO, 2FA/MFA, JWT tokens, OAuth, SAML
+2. **Encryption**: Encryption vs hashing, public/private keys, cryptography basics
+3. **Web Security**: XSS, CSRF, SQL Injection
+4. **Network Security**: HTTPS, SSL/TLS
+5. **Application Security**: Secure coding practices
+6. **REST API Monitoring & Versioning**: Metrics, patterns, deprecation
+7. **REST API Design Patterns**: Resource orientation, HATEOAS, pagination, caching, idempotency
+8. **API Security**: Authentication methods, authorization, encryption, input validation, rate limiting, CORS, security headers, error handling, logging, vulnerability prevention
+9. **API Stability**: Versioning, deprecation, testing, monitoring, schema evolution, deployment strategies
+10. **Backward Compatibility**: Additive changes, avoiding breaking changes, parameter compatibility, testing, monitoring
+11. **Best Practices**: Security and stability guidelines and standards
 
 This guide covers essential security interview questions including:
 

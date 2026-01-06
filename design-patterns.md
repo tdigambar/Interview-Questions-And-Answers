@@ -1454,6 +1454,286 @@ Yes! Patterns often work together:
 
 ---
 
+## Architectural Patterns
+
+### 1. Strangler Pattern
+
+#### What is the Strangler Pattern?
+
+The Strangler Pattern is a migration/refactoring strategy for gradually replacing a legacy system with a new system piece by piece, without a big-bang rewrite. It works like a strangler fig tree that grows around a host tree and eventually replaces it.
+
+#### How It Works:
+
+**Phase 1: Coexistence**
+```
+Client → Facade/Proxy
+         ├─ New System (beginning to handle some requests)
+         └─ Old System (still handles most requests)
+```
+
+**Phase 2: Gradual Migration**
+```
+Client → Facade/Proxy
+         ├─ New System (handling more and more traffic)
+         └─ Old System (shrinking, handling less traffic)
+```
+
+**Phase 3: Complete Migration**
+```
+Client → New System (old system decommissioned)
+```
+
+#### Example Architecture:
+
+```
+BEFORE (Monolith):
+┌──────────────────────────┐
+│  Single Legacy App       │
+│  ├─ Users Module         │
+│  ├─ Products Module      │
+│  ├─ Orders Module        │
+│  └─ Shared Database      │
+└──────────────────────────┘
+
+DURING (Strangler):
+         Client
+           │
+      ┌────▼────┐
+      │ Proxy   │ ← Routes requests intelligently
+      └──┬─┬─┬──┘
+        │ │ │
+   ┌────▼┐│ │        ┌─────────────────────────┐
+   │Users││ │        │  Legacy Monolith        │
+   │(New)││ │        │  ├─ Products            │
+   └─────┘│ │        │  ├─ Orders              │
+    ┌─────▼┐│        │  └─ DB                  │
+    │Orders││        └─────────────────────────┘
+    │(New) ││
+    └──────┘│
+      ┌─────▼──────┐
+      │  Products  │
+      │  (New)     │
+      └────────────┘
+
+AFTER (Full Migration):
+    ┌─────┐  ┌──────┐  ┌────────┐  ┌──────────┐
+    │Users│  │Orders│  │Products│  │Payments  │
+    └─────┘  └──────┘  └────────┘  └──────────┘
+```
+
+#### Implementation Example (Node.js / Express):
+
+```javascript
+const express = require('express');
+const httpProxy = require('express-http-proxy');
+
+const app = express();
+
+// Route users to NEW microservice
+app.use('/api/v1/users', httpProxy('http://users-service:3001', {
+  proxyReqPathResolver: (req) => {
+    return req.originalUrl.replace('/api/v1/users', '/users');
+  }
+}));
+
+// Route orders to NEW microservice
+app.use('/api/v1/orders', httpProxy('http://orders-service:3002', {
+  proxyReqPathResolver: (req) => {
+    return req.originalUrl.replace('/api/v1/orders', '/orders');
+  }
+}));
+
+// Route products to LEGACY system (still migrating)
+app.use('/api/v1/products', httpProxy('http://legacy-monolith:3000', {
+  proxyReqPathResolver: (req) => {
+    return req.originalUrl.replace('/api/v1/products', '/products');
+  }
+}));
+
+// Route payments to LEGACY system
+app.use('/api/v1/payments', httpProxy('http://legacy-monolith:3000', {
+  proxyReqPathResolver: (req) => {
+    return req.originalUrl.replace('/api/v1/payments', '/payments');
+  }
+}));
+
+app.listen(8000, () => {
+  console.log('Proxy listening on port 8000');
+});
+```
+
+#### Advanced: Intelligent Routing Based on Feature Flags
+
+```javascript
+const express = require('express');
+const featureFlags = require('./featureFlags');
+
+const app = express();
+
+// Route based on feature flag
+app.get('/api/v1/users/:id', async (req, res) => {
+  const useNewUserService = featureFlags.isEnabled('use-new-user-service');
+  
+  if (useNewUserService) {
+    // Route to new microservice
+    return httpProxy('http://users-service:3001')(req, res);
+  } else {
+    // Route to legacy system
+    return httpProxy('http://legacy-monolith:3000')(req, res);
+  }
+});
+```
+
+#### Strangler Pattern Migration Timeline:
+
+```
+Month 1-2: Extract Users Service
+  ├─ Build new Users Service
+  ├─ Implement data sync (dual-write)
+  └─ Route small % of traffic to new service
+
+Month 3-4: Extract Orders Service
+  ├─ Build new Orders Service
+  ├─ Gradually increase traffic to Orders (10% → 50% → 100%)
+  └─ Monitor performance and errors
+
+Month 5-6: Extract Products Service
+  ├─ Complete products migration
+  └─ Retire legacy products code from monolith
+
+Month 7-8: Extract Payments Service
+  ├─ Complete payments migration
+  └─ Retire legacy payments code
+
+Month 9+: Decommission Legacy Monolith
+  ├─ Verify all services are independent
+  ├─ Archive legacy code
+  └─ Shutdown legacy infrastructure
+```
+
+#### Benefits:
+
+✓ **Low Risk:** Gradual rollout, can rollback individual features
+✓ **Reversible:** If new service fails, can route back to old system
+✓ **Parallel Running:** Old and new systems coexist without downtime
+✓ **Team Flexibility:** Teams work on new system while old continues operating
+✓ **Production Testing:** Test new features with real traffic gradually
+✓ **Business Continuity:** Zero downtime during migration
+✓ **Cost Spread:** Amortize investment over time instead of big expense
+
+#### Challenges:
+
+✗ **Complexity:** Must maintain compatibility between old and new systems
+✗ **Data Consistency:** Keeping two systems in sync is difficult (dual-write issues)
+✗ **Duplicate Logic:** Code exists in both systems during transition
+✗ **Increased Testing:** Must test both code paths simultaneously
+✗ **Long Timeline:** Migration takes months or years
+✗ **Operational Overhead:** Running two systems is more complex
+
+#### Data Synchronization Strategies:
+
+**1. Dual-Write Pattern:**
+```javascript
+// New request writes to both systems
+async function createUser(userData) {
+  // Write to legacy system
+  const legacyResult = await legacyDB.users.create(userData);
+  
+  // Write to new service
+  const newResult = await newUserService.create(userData);
+  
+  return newResult; // Return from new system
+}
+```
+
+**Issues:** Can cause inconsistency if one write fails.
+
+**2. Event-Driven Synchronization:**
+```javascript
+// Publish event from monolith
+async function createUser(userData) {
+  const user = await monolithDB.users.create(userData);
+  
+  // Publish event
+  await eventBus.publish('user.created', {
+    userId: user.id,
+    data: user
+  });
+  
+  return user;
+}
+
+// New service subscribes to events
+eventBus.subscribe('user.created', async (event) => {
+  await newUserService.create(event.data);
+});
+```
+
+**3. Change Data Capture (CDC):**
+```
+Monolith DB → CDC Tool (Debezium) → Kafka Topic → New Service
+              Detects changes in DB and publishes events
+```
+
+#### When to Use Strangler Pattern:
+
+✓ Large legacy system that needs modernization
+✓ No budget for complete system rewrite
+✓ Need to maintain business continuity
+✓ System can be decomposed into independent modules
+✓ Incremental improvement is acceptable
+✓ Long migration timeline is acceptable
+
+#### When NOT to Use Strangler Pattern:
+
+✗ Small/simple systems (full rewrite is faster)
+✗ Highly coupled legacy system (hard to isolate features)
+✗ Complete architectural overhaul needed
+✗ Budget allows for aggressive full rewrite
+✗ Stakeholders demand fast transformation
+
+#### Real-World Examples:
+
+**Netflix:**
+- Migrated from monolith to microservices using Strangler
+- Took years to extract all services
+- Used proxy layer to route traffic
+
+**Amazon Prime Video:**
+- Migrated distributed system incrementally
+- Used feature flags for traffic routing
+
+**Airbnb:**
+- Gradually extracted services from Rails monolith
+- Used Strangler to minimize downtime
+
+#### Strangler vs Other Patterns:
+
+| Aspect | Strangler | Big Bang Rewrite | Branch by Abstraction |
+|--------|-----------|-----------------|----------------------|
+| **Risk** | Low | High | Medium |
+| **Timeline** | Long | Medium | Medium |
+| **Cost** | Spread out | High upfront | Medium |
+| **Downtime** | None | Yes | None |
+| **Rollback** | Easy | Hard | Easy |
+| **Complexity** | High | Low | Medium |
+| **Team Impact** | Continuous work | Sprint-based | Ongoing |
+
+#### Best Practices:
+
+1. **Start with independent modules:** Choose services with minimal dependencies first
+2. **Build robust proxy/gateway:** The routing layer is critical
+3. **Monitor carefully:** Track performance, errors, and data consistency
+4. **Plan data migration:** Have a clear strategy for syncing old/new systems
+5. **Use feature flags:** Control traffic routing without redeployment
+6. **Incremental testing:** Gradually increase traffic to new services
+7. **Maintain backwards compatibility:** Old and new must coexist
+8. **Document the journey:** Track what was migrated when
+9. **Keep old system stable:** Don't make breaking changes while migrating
+10. **Plan the final decommission:** Know when/how to shut down legacy system
+
+---
+
 ## Best Practices
 
 1. **Don't Force Patterns**: Use patterns when they solve a real problem, not just for the sake of using them

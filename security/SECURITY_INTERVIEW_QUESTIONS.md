@@ -2300,6 +2300,507 @@ app.listen(3000, () => console.log('Secure API running on port 3000'));
 
 ---
 
+### 13. How do you ensure APIs remain stable for a long period?
+
+**Answer:**
+Long-term API stability requires a comprehensive strategy combining versioning, testing, monitoring, documentation, and careful change management. Here are the key approaches:
+
+**1. Versioning & Backward Compatibility**
+
+```javascript
+// Support multiple API versions simultaneously
+app.use('/v1', require('./routes/v1'));
+app.use('/v2', require('./routes/v2'));
+app.use('/v3', require('./routes/v3'));
+
+// Example: v2 maintains backward compatibility with v1
+// routes/v2/users.js
+app.get('/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  
+  // Return v1 format for backward compatibility
+  const v1Response = {
+    id: user.id,
+    name: user.name,
+    email: user.email
+  };
+  
+  // v2 also includes new fields
+  const v2Response = {
+    ...v1Response,
+    createdAt: user.created_at,
+    lastLogin: user.last_login,
+    status: user.status
+  };
+  
+  res.json(v2Response);
+});
+```
+
+**Versioning Strategy Timeline:**
+```
+v1 Released: Jan 2023
+v2 Released: Jan 2024 (v1 still supported)
+v3 Released: Jan 2025 (v1 deprecated, v2 still supported)
+v1 Sunset: Jan 2026 (removed, 3-year support cycle)
+
+Support Duration: 2+ years minimum per version
+```
+
+**2. Deprecation Policy**
+
+```javascript
+// Add deprecation headers
+const deprecationMiddleware = (deprecationDate, sunsetDate) => {
+  return (req, res, next) => {
+    res.set('Deprecation', 'true');
+    res.set('Sunset', new Date(sunsetDate).toUTCString());
+    res.set('Link', '</docs/migration>; rel="deprecation"');
+    res.set('Warning', `299 - "API endpoint deprecated on ${deprecationDate}"`);
+    next();
+  };
+};
+
+app.get('/v1/users/:id', deprecationMiddleware('2024-01-01', '2026-01-01'), (req, res) => {
+  // Handle request but signal deprecation
+  res.json({ user: 'data' });
+});
+```
+
+**3. Comprehensive Testing**
+
+```javascript
+// Backward compatibility tests
+describe('API Stability Tests', () => {
+  test('v2 response includes v1 fields', () => {
+    const response = makeRequest('GET', '/v2/users/1');
+    expect(response).toHaveProperty('id');
+    expect(response).toHaveProperty('name');
+    expect(response).toHaveProperty('email');
+  });
+
+  test('v2 response includes new fields', () => {
+    const response = makeRequest('GET', '/v2/users/1');
+    expect(response).toHaveProperty('createdAt');
+    expect(response).toHaveProperty('lastLogin');
+  });
+
+  test('response structure consistent across versions', () => {
+    const v1Response = makeRequest('GET', '/v1/users/1');
+    const v2Response = makeRequest('GET', '/v2/users/1');
+    
+    // v2 should be superset of v1
+    Object.keys(v1Response).forEach(key => {
+      expect(v2Response).toHaveProperty(key);
+      expect(v2Response[key]).toEqual(v1Response[key]);
+    });
+  });
+
+  test('performance benchmarks', () => {
+    const start = Date.now();
+    for (let i = 0; i < 1000; i++) {
+      makeRequest('GET', '/v2/users/1');
+    }
+    const duration = Date.now() - start;
+    expect(duration).toBeLessThan(5000); // Should complete in <5s
+  });
+});
+
+// Load testing
+const loadtest = require('loadtest');
+
+loadtest.loadTest({
+  url: 'http://localhost:3000/api/v2/users',
+  concurrent: 10,
+  maxRequests: 1000
+}, (error, results) => {
+  if (error) console.error('Load test failed', error);
+  else console.log('Load test results:', results);
+});
+```
+
+**4. Monitoring & Alerting**
+
+```javascript
+const prometheus = require('prom-client');
+const winston = require('winston');
+
+// Metrics
+const httpRequestDuration = new prometheus.Histogram({
+  name: 'http_request_duration_ms',
+  help: 'Duration of HTTP requests in ms',
+  labelNames: ['method', 'route', 'status_code', 'version'],
+  buckets: [50, 100, 200, 500, 1000, 2000]
+});
+
+const apiErrors = new prometheus.Counter({
+  name: 'api_errors_total',
+  help: 'Total API errors',
+  labelNames: ['version', 'endpoint', 'status_code']
+});
+
+// Request tracking with version awareness
+app.use((req, res, next) => {
+  const start = Date.now();
+  const version = req.path.split('/')[2]; // Extract v1, v2, etc.
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const route = req.route?.path || req.path;
+    
+    httpRequestDuration
+      .labels(req.method, route, res.statusCode, version)
+      .observe(duration);
+    
+    if (res.statusCode >= 400) {
+      apiErrors
+        .labels(version, route, res.statusCode)
+        .inc();
+      
+      logger.warn({
+        version,
+        endpoint: route,
+        status: res.statusCode,
+        duration,
+        timestamp: new Date()
+      });
+    }
+  });
+  
+  next();
+});
+
+// Alerting rules
+const alerting = {
+  highErrorRate: (version) => {
+    const errorRate = getErrorRate(version);
+    if (errorRate > 0.05) { // >5% errors
+      sendAlert(`High error rate in ${version}: ${errorRate}%`);
+    }
+  },
+  
+  slowResponse: (version) => {
+    const p95Latency = getPercentileLatency(version, 95);
+    if (p95Latency > 500) { // >500ms
+      sendAlert(`Slow responses in ${version}: ${p95Latency}ms`);
+    }
+  },
+  
+  deprecationReminder: () => {
+    const deprecationDate = new Date('2026-01-01');
+    const daysUntilSunset = Math.ceil((deprecationDate - Date.now()) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilSunset === 30) {
+      notifyConsumers(`v1 API sunset in 30 days`);
+    }
+  }
+};
+```
+
+**5. Database Schema Evolution**
+
+```javascript
+// Migration example: Add new column backward-compatibly
+// Migration: 001_add_status_to_users.js
+
+// UP: Add nullable column
+exports.up = (knex) => {
+  return knex.schema.table('users', (table) => {
+    table.string('status').nullable().defaultTo('active');
+  });
+};
+
+// DOWN: Remove column if rollback needed
+exports.down = (knex) => {
+  return knex.schema.table('users', (table) => {
+    table.dropColumn('status');
+  });
+};
+
+// Query adjustment - set default for existing rows without affecting old API responses
+app.get('/v1/users/:id', async (req, res) => {
+  const user = await db('users').where({ id: req.params.id }).first();
+  
+  // v1 response doesn't include status (new field)
+  const response = {
+    id: user.id,
+    name: user.name,
+    email: user.email
+  };
+  
+  res.json(response);
+});
+
+app.get('/v2/users/:id', async (req, res) => {
+  const user = await db('users').where({ id: req.params.id }).first();
+  
+  // v2 includes status
+  const response = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    status: user.status // New field in v2
+  };
+  
+  res.json(response);
+});
+```
+
+**6. API Gateway Pattern**
+
+```javascript
+const gateway = require('express');
+const app = gateway();
+
+// Centralized routing with per-version configuration
+const versionConfig = {
+  v1: {
+    target: 'http://service-v1:3000',
+    rateLimit: 100,
+    timeout: 5000,
+    deprecated: true,
+    sunsetDate: '2026-01-01'
+  },
+  v2: {
+    target: 'http://service-v2:3000',
+    rateLimit: 500,
+    timeout: 3000,
+    deprecated: false
+  },
+  v3: {
+    target: 'http://service-v3:3000',
+    rateLimit: 1000,
+    timeout: 2000,
+    deprecated: false
+  }
+};
+
+// Route to correct version
+app.use('/api/:version', (req, res, next) => {
+  const version = req.params.version;
+  const config = versionConfig[version];
+  
+  if (!config) {
+    return res.status(400).json({ error: 'Invalid API version' });
+  }
+  
+  // Add deprecation headers
+  if (config.deprecated) {
+    res.set('Deprecation', 'true');
+    res.set('Sunset', new Date(config.sunsetDate).toUTCString());
+  }
+  
+  // Set version-specific rate limit
+  applyRateLimit(config.rateLimit)(req, res, next);
+});
+```
+
+**7. Deployment Strategies**
+
+```javascript
+// Blue-Green Deployment
+const blueGreenDeploy = {
+  // Current production (blue)
+  blue: {
+    version: 'v2.4.1',
+    instances: ['server-1', 'server-2', 'server-3'],
+    healthCheck: true
+  },
+  
+  // New version ready to deploy (green)
+  green: {
+    version: 'v2.5.0',
+    instances: ['server-4', 'server-5', 'server-6'],
+    healthCheck: true
+  },
+  
+  // Switch when green is ready
+  switchTraffic: async () => {
+    // Route all traffic from blue to green
+    await loadBalancer.switchRoute(this.green);
+    this.blue = this.green;
+  }
+};
+
+// Canary Deployment for safer rollout
+const canaryDeploy = {
+  phase1: { percentage: 5, duration: '1 hour' },  // 5% traffic
+  phase2: { percentage: 25, duration: '4 hours' }, // 25% traffic
+  phase3: { percentage: 50, duration: '8 hours' }, // 50% traffic
+  phase4: { percentage: 100, duration: 'permanent' } // 100% traffic
+};
+
+// Feature flags for controlled rollout
+app.get('/v2/users/:id', (req, res) => {
+  const user = db.users.findById(req.params.id);
+  
+  if (featureFlags.isEnabled('newUserResponseFormat', user.id)) {
+    // New format for canary users
+    res.json({ ...user, metadata: { version: 'new' } });
+  } else {
+    // Old format for others
+    res.json({ ...user, metadata: { version: 'stable' } });
+  }
+});
+```
+
+**8. Change Management & Documentation**
+
+```javascript
+// Changelog structure
+const changelog = `
+# API Changelog
+
+## v3.0.0 (2025-01-15)
+### Breaking Changes
+- Removed deprecated /users/search endpoint (use /users?search=... instead)
+- Changed response format for batch requests (array instead of object)
+
+### New Features
+- Added rate limit reset time in response headers
+- Implemented ETag support for conditional requests
+- Added webhook events for real-time updates
+
+### Deprecations
+- Deprecated /auth/token (use /auth/oauth2/token)
+
+### Migration Guide
+See: https://docs.api.com/migration/v2-to-v3
+
+## v2.5.0 (2024-12-01)
+### Bug Fixes
+- Fixed pagination offset calculation
+
+## v2.4.0 (2024-11-01)
+### New Features
+- Added new fields: createdAt, updatedAt
+`;
+
+// API Documentation with stability indicators
+const apiDocs = {
+  '/v1/users': {
+    status: 'deprecated',
+    sunsetDate: '2026-01-01',
+    replacedBy: '/v2/users',
+    migration: 'https://docs.api.com/migrate-v1-v2'
+  },
+  '/v2/users': {
+    status: 'stable',
+    since: '2024-01-01',
+    lastUpdated: '2025-12-01'
+  },
+  '/v3/users': {
+    status: 'beta',
+    since: '2025-01-15',
+    feedback: 'https://github.com/api/issues'
+  }
+};
+```
+
+**9. SLA & Uptime Tracking**
+
+```javascript
+// Define and monitor SLAs
+const sla = {
+  availability: {
+    target: '99.9%', // 43 minutes downtime per month
+    v1: { current: 99.95 },
+    v2: { current: 99.98 },
+    v3: { current: 99.92 }
+  },
+  
+  latency: {
+    p50: { target: '100ms', current: '85ms' },
+    p95: { target: '200ms', current: '145ms' },
+    p99: { target: '500ms', current: '380ms' }
+  },
+  
+  errorRate: {
+    target: '<0.1%',
+    current: '0.02%'
+  }
+};
+
+// Status page updates
+app.get('/status', (req, res) => {
+  res.json({
+    status: 'operational',
+    sla: sla,
+    components: {
+      'api-v1': 'degraded',
+      'api-v2': 'operational',
+      'api-v3': 'operational',
+      database: 'operational',
+      cache: 'operational'
+    },
+    incidents: [],
+    lastUpdated: new Date()
+  });
+});
+```
+
+**10. Communication Plan**
+
+```javascript
+// Notification timeline for major changes
+const communicationPlan = {
+  months: [
+    {
+      timeline: '6 months before sunset',
+      actions: ['Email announcement', 'Blog post', 'Update documentation']
+    },
+    {
+      timeline: '3 months before sunset',
+      actions: ['In-app warning', 'API response headers', 'Follow-up email']
+    },
+    {
+      timeline: '1 month before sunset',
+      actions: ['Urgent notifications', 'Office hours support', 'Final warnings']
+    },
+    {
+      timeline: 'Sunset date',
+      actions: ['Endpoint returns 410 Gone', 'Database logging', 'Support escalation']
+    }
+  ]
+};
+
+// Send deprecation notices
+const notifyConsumers = async () => {
+  const consumers = await db.apiConsumers.find({ 
+    apiVersion: 'v1',
+    status: 'active'
+  });
+  
+  consumers.forEach(consumer => {
+    sendEmail(consumer.email, {
+      subject: 'Important: Your API v1 is being deprecated',
+      body: 'Migration guide: https://docs.api.com/migrate-v1-v2',
+      sunsetDate: '2026-01-01'
+    });
+  });
+};
+```
+
+**11. Stability Checklist**
+
+- [ ] Multiple API versions in production simultaneously
+- [ ] Deprecation policy documented (2+ year support)
+- [ ] Backward compatibility tests passing
+- [ ] >85% test coverage for critical paths
+- [ ] Monitoring active on all versions
+- [ ] SLAs defined and tracked
+- [ ] Performance benchmarks established
+- [ ] Database migrations tested for backward compatibility
+- [ ] Changelog maintained and published
+- [ ] Deprecation headers implemented
+- [ ] Status page live and updated
+- [ ] Communication plan for major changes
+- [ ] Deployment strategy documented (blue-green, canary, feature flags)
+- [ ] Incident response plan in place
+- [ ] Consumer notification system automated
+
+---
+
 ## Summary
 
 This guide covers essential security interview questions including:
@@ -2312,7 +2813,8 @@ This guide covers essential security interview questions including:
 6. **REST API Monitoring & Versioning**: Metrics, patterns, deprecation
 7. **REST API Design Patterns**: Resource orientation, HATEOAS, pagination, caching, idempotency
 8. **API Security**: Authentication methods, authorization, encryption, input validation, rate limiting, CORS, security headers, error handling, logging, vulnerability prevention
-9. **Best Practices**: Security guidelines and standards
+9. **API Stability**: Versioning, deprecation, testing, monitoring, schema evolution, deployment strategies
+10. **Best Practices**: Security and stability guidelines and standards
 
 Remember to understand both the concepts and practical implementations. Good luck with your security interviews!
 

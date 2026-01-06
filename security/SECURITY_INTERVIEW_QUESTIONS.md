@@ -1476,6 +1476,366 @@ Use **URL path versioning** (`/api/v1/`, `/api/v2/`) for most REST APIs because:
 - Standard industry practice
 - Works well with API gateways and load balancers
 
+---
+
+### 11. What are the main REST API design patterns?
+
+**Answer:**
+
+REST API design patterns establish conventions for building scalable, maintainable, and developer-friendly APIs. Here are the key patterns:
+
+**1. Resource-Oriented Design**
+
+Structure URLs around resources (nouns), not actions (verbs):
+
+```
+✓ Good:
+GET    /api/users               # List users
+POST   /api/users               # Create user
+GET    /api/users/123           # Get user
+PUT    /api/users/123           # Replace user
+PATCH  /api/users/123           # Partial update
+DELETE /api/users/123           # Delete user
+
+✗ Bad (RPC-style):
+POST /api/getUser
+POST /api/createUser
+POST /api/updateUser
+```
+
+**2. Richardson Maturity Model (REST Maturity Levels)**
+
+```
+Level 0: RPC-style (no REST)
+  POST /api?action=getUser&id=1
+
+Level 1: Resources
+  GET /api/users/1
+
+Level 2: HTTP Verbs (proper use of HTTP methods)
+  GET /api/users/1
+  POST /api/users
+  PUT /api/users/1
+  DELETE /api/users/1
+
+Level 3: HATEOAS (Hypermedia As The Engine Of Application State)
+  Response includes links to related resources
+```
+
+**3. HATEOAS Pattern (Discoverability)**
+
+Include links in responses to guide clients to next actions:
+
+```json
+{
+  "id": 1,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "links": {
+    "self": { "href": "/api/users/1", "method": "GET" },
+    "all_users": { "href": "/api/users", "method": "GET" },
+    "update": { "href": "/api/users/1", "method": "PUT" },
+    "delete": { "href": "/api/users/1", "method": "DELETE" },
+    "posts": { "href": "/api/users/1/posts", "method": "GET" }
+  }
+}
+```
+
+**Benefits:** Client doesn't need to hard-code URLs; self-documenting API.
+
+**4. Pagination Pattern**
+
+For large datasets, return paginated results:
+
+```
+GET /api/users?page=1&limit=10
+GET /api/users?offset=0&limit=10
+GET /api/users?cursor=abc123&limit=10  # Cursor-based (for large datasets)
+
+Response:
+{
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 100,
+    "pages": 10,
+    "next": "/api/users?page=2&limit=10",
+    "prev": null
+  }
+}
+```
+
+**5. Filtering & Sorting Pattern**
+
+Allow clients to customize results:
+
+```
+GET /api/users?status=active&role=admin         # Filtering
+GET /api/users?sort=name,-created_at            # Sorting (+ ascending, - descending)
+GET /api/users?search=john&fields=id,name      # Search & sparse fieldsets
+GET /api/users?include=posts,comments           # Include related resources
+```
+
+**6. API Gateway Pattern**
+
+Centralized entry point for routing, auth, rate limiting, logging:
+
+```
+Client ──> API Gateway ──> Auth Service
+              │           ├─> User Service
+              │           ├─> Product Service
+              │           └─> Order Service
+```
+
+**Benefits:** Centralized security, logging, rate limiting; service discovery.
+
+**7. BFF (Backend for Frontend) Pattern**
+
+Different backends optimized for different client types:
+
+```
+Web Client ──> Web BFF (optimized for web)
+Mobile Client ──> Mobile BFF (optimized for mobile)
+               │
+               ├─> Shared Services (Auth, Users, Products)
+```
+
+**Benefits:** Tailor API response for each client; avoid over-fetching/under-fetching.
+
+**8. Idempotency Pattern**
+
+Ensure same request produces same result (safe for retries):
+
+```
+POST /api/payments
+Headers: Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+
+First request: 201 Created (charge created)
+Retry with same key: 200 OK (returns same charge, doesn't duplicate)
+```
+
+**Implementation:**
+```javascript
+const idempotencyKeys = new Map();
+
+app.post('/payments', (req, res) => {
+  const key = req.headers['idempotency-key'];
+  
+  // If key exists, return cached result
+  if (idempotencyKeys.has(key)) {
+    return res.json(idempotencyKeys.get(key));
+  }
+  
+  // Process payment
+  const result = processPayment(req.body);
+  idempotencyKeys.set(key, result);
+  
+  res.status(201).json(result);
+});
+```
+
+**9. Error Handling Pattern**
+
+Consistent, structured error responses:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Request validation failed",
+    "details": [
+      { "field": "email", "issue": "Invalid email format" },
+      { "field": "age", "issue": "Must be >= 18" }
+    ]
+  }
+}
+```
+
+**10. Caching Pattern**
+
+Use HTTP caching headers for performance:
+
+```
+GET /api/users/123
+
+Response Headers:
+  Cache-Control: public, max-age=3600
+  ETag: "abc123def456"
+  Last-Modified: Wed, 06 Jan 2026 10:00:00 GMT
+
+Subsequent request with If-None-Match: "abc123def456"
+  Response: 304 Not Modified (no body, save bandwidth)
+```
+
+**11. Rate Limiting Pattern**
+
+Protect API from abuse:
+
+```
+Response Headers:
+  X-RateLimit-Limit: 1000
+  X-RateLimit-Remaining: 999
+  X-RateLimit-Reset: 1609459200
+
+When exceeded:
+  429 Too Many Requests
+  Retry-After: 60  # Retry after 60 seconds
+```
+
+**12. Webhook Pattern (Push vs Pull)**
+
+Instead of client polling, server pushes events:
+
+```
+1. Register webhook:
+   POST /webhooks
+   { "url": "https://myapp.com/hooks/payment", "events": ["payment.completed"] }
+
+2. Event occurs on server
+3. Server pushes to webhook URL:
+   POST https://myapp.com/hooks/payment
+   { "event": "payment.completed", "data": {...}, "timestamp": "2026-01-06T10:00:00Z" }
+
+4. Client acknowledges:
+   200 OK or 202 Accepted
+```
+
+**13. Batch Request Pattern**
+
+Allow multiple operations in single request:
+
+```
+POST /api/batch
+{
+  "requests": [
+    { "method": "GET", "path": "/users/1" },
+    { "method": "POST", "path": "/posts", "body": {...} },
+    { "method": "DELETE", "path": "/users/2" }
+  ]
+}
+
+Response:
+{
+  "responses": [
+    { "status": 200, "body": {...} },
+    { "status": 201, "body": {...} },
+    { "status": 204, "body": null }
+  ]
+}
+```
+
+**14. Authentication Patterns**
+
+```
+# API Key
+Authorization: Bearer abc123def456
+
+# Basic Auth
+Authorization: Basic base64(username:password)
+
+# JWT Token
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+
+# OAuth 2.0
+Authorization: Bearer <access_token>
+```
+
+**15. Soft Delete Pattern**
+
+Mark resources as deleted instead of removing:
+
+```javascript
+// Instead of DELETE /api/users/123
+PATCH /api/users/123
+{ "deleted_at": "2026-01-06T10:00:00Z" }
+
+// Query excludes soft-deleted by default
+GET /api/users  # Returns only non-deleted users
+
+// Include deleted if needed
+GET /api/users?include_deleted=true
+```
+
+**Benefits:** Data recovery, audit trails, referential integrity.
+
+**16. Async Operations Pattern**
+
+For long-running operations, return 202 Accepted with status URL:
+
+```
+POST /api/reports/generate
+Response: 202 Accepted
+{
+  "id": "report-123",
+  "status": "processing",
+  "status_url": "/api/reports/report-123/status"
+}
+
+Client polls:
+GET /api/reports/report-123/status
+Response:
+{
+  "id": "report-123",
+  "status": "completed",
+  "result_url": "/api/reports/report-123/result"
+}
+```
+
+**17. Content Negotiation Pattern**
+
+Support multiple response formats:
+
+```
+GET /api/users/123
+Accept: application/json        # Returns JSON
+Accept: application/xml         # Returns XML
+Accept: text/csv                # Returns CSV
+```
+
+**18. Partial Response / Sparse Fieldsets**
+
+Allow clients to request only needed fields:
+
+```
+GET /api/users/123?fields=id,name,email
+Response:
+{ "id": 1, "name": "John", "email": "john@example.com" }
+
+vs default:
+{ "id": 1, "name": "John", "email": "john@example.com", "phone": "...", "address": "...", ... }
+```
+
+---
+
+**Best Practices Summary:**
+
+1. **Use resource-based URLs** with nouns, not verbs
+2. **Use HTTP methods correctly** (GET, POST, PUT, PATCH, DELETE)
+3. **Return appropriate status codes** (200, 201, 400, 401, 403, 404, 500)
+4. **Use JSON** for request/response bodies
+5. **Implement pagination** for large datasets
+6. **Support filtering, sorting, and searching**
+7. **Use consistent error response format**
+8. **Implement idempotency** for safe retries
+9. **Use HATEOAS** for discoverability
+10. **Document thoroughly** (Swagger/OpenAPI)
+11. **Implement rate limiting** and throttling
+12. **Use proper authentication/authorization**
+13. **Support caching** with appropriate headers
+14. **Version your API** for breaking changes
+15. **Use API Gateway** for cross-cutting concerns
+
+**Design Comparison:**
+
+| Pattern | Complexity | Performance | Discoverability | Use Case |
+|---------|-----------|------------|-----------------|----------|
+| **Basic REST** | Low | Good | Medium | Simple internal APIs |
+| **REST + HATEOAS** | Medium | Good | Excellent | Public APIs, discoverability important |
+| **GraphQL** | Medium | Excellent | Good | Complex, flexible queries needed |
+| **gRPC** | High | Excellent | Low | Microservices, high-performance needs |
+
+---
 
 ## Summary
 
@@ -1487,7 +1847,8 @@ This guide covers essential security interview questions including:
 4. **Network Security**: HTTPS, SSL/TLS
 5. **Application Security**: Secure coding practices
 6. **REST API Monitoring & Versioning**: Metrics, patterns, deprecation
-7. **Best Practices**: Security guidelines and standards
+7. **REST API Design Patterns**: Resource orientation, HATEOAS, pagination, caching, idempotency
+8. **Best Practices**: Security guidelines and standards
 
 Remember to understand both the concepts and practical implementations. Good luck with your security interviews!
 

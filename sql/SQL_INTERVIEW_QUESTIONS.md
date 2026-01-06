@@ -15,6 +15,8 @@ This comprehensive guide covers essential SQL interview questions from basic con
 9. [Transactions and ACID](#transactions-and-acid)
 10. [Advanced Topics](#advanced-topics)
     - [Find 3rd Highest Salary](#26-how-do-you-find-the-3rd-highest-salary-from-a-table)
+    - [Read Replicas](#27-what-are-read-replicas-and-how-do-they-improve-performance)
+    - [Write Scaling](#28-how-do-you-scale-writes-in-a-database)
 
 ---
 
@@ -1364,6 +1366,232 @@ WHERE (n - 1) = (
     WHERE e2.salary > e1.salary
 );
 ```
+
+### 27. What are Read Replicas and how do they improve performance?
+
+**Answer:**
+
+Read replicas are copies of your primary database that are kept in sync for read-only operations. They allow you to distribute read traffic away from the primary database, improving overall system performance and scalability.
+
+**How Read Replicas Work:**
+
+1. **Primary Database**: Handles all writes (INSERT, UPDATE, DELETE)
+2. **Replication**: Primary database logs all changes to a binary log
+3. **Replica Databases**: Read the binary log and apply the same changes asynchronously
+4. **Reads**: Application routes read queries to replicas, writes to primary
+
+**Benefits of Read Replicas:**
+
+1. **Improved Read Performance**: Distribute read load across multiple instances
+2. **High Availability**: Failover to replica if primary goes down
+3. **Backup**: Use replicas for backups without impacting primary
+4. **Geographic Distribution**: Place replicas in different regions for local reads
+5. **Reporting**: Use replicas for heavy reporting/analytics queries
+
+**Example (MySQL Master-Slave):**
+```sql
+-- On Primary Database (my.cnf)
+-- [mysqld]
+-- server-id = 1
+-- log_bin = mysql-bin
+-- binlog_do_db = myapp_db
+
+-- On Replica Database (my.cnf)
+-- [mysqld]
+-- server-id = 2
+-- relay-log = mysql-relay-bin
+
+-- Configure replica to replicate from primary
+CHANGE REPLICATION SOURCE TO
+    SOURCE_HOST='primary.example.com',
+    SOURCE_USER='repl_user',
+    SOURCE_PASSWORD='password',
+    SOURCE_LOG_FILE='mysql-bin.000001',
+    SOURCE_LOG_POS=154;
+
+START REPLICA;
+
+-- Check replica status
+SHOW REPLICA STATUS\G
+```
+
+**Replication Lag:**
+
+Replicas are asynchronous, so there can be a delay between writes on primary and visibility on replicas.
+
+```
+Time: 0s    Application writes to primary
+Time: 0.5s  Change recorded to binary log
+Time: 1s    Replica processes the change
+Time: 1.5s  Data visible on replica
+
+Replication Lag = ~1.5 seconds
+```
+
+**Handling Replication Lag:**
+```java
+// Send recent writes to primary, reads to replica
+if (isRecentWrite()) {
+    return database.primary.query(sql);
+} else {
+    return database.replica.query(sql);
+}
+```
+
+**Limitations:**
+- Read-only (mostly) — some databases support writes to replica with conflicts
+- Replication lag — eventual consistency, not strong consistency
+- Network overhead — continuous log shipping
+- Storage overhead — replica stores full copy of data
+
+---
+
+### 28. How do you scale writes in a database?
+
+**Answer:**
+
+Write scaling is more challenging than read scaling because writes must go to the same data store to maintain consistency. Here are common approaches:
+
+**1. Vertical Scaling (Scale Up)**
+
+Add more resources to the primary database:
+- Faster CPU/memory
+- Better storage (SSD vs HDD)
+- Simpler but has limits
+
+**2. Horizontal Scaling with Sharding**
+
+Split data across multiple databases based on shard key (partition key).
+
+```
+Shard Key: user_id (hash-based)
+
+user_id % 4 = 0,1,2,3  →  4 different shards
+
+Write for user 5 goes to Shard 1
+Write for user 8 goes to Shard 0
+Write for user 10 goes to Shard 2
+```
+
+**Sharding Example (Application Level):**
+```java
+public class ShardRouter {
+    private Database[] shards = new Database[4];
+    
+    public void writeUser(User user) {
+        int shardId = user.userId % 4;
+        shards[shardId].insert(user);
+    }
+    
+    public User getUser(int userId) {
+        int shardId = userId % 4;
+        return shards[shardId].query("SELECT * FROM users WHERE id = ?", userId);
+    }
+}
+```
+
+**Pros of Sharding:**
+- Linear write scaling (add more shards = more write capacity)
+- Data locality (smaller datasets per shard = faster queries)
+- Independent failures (one shard failure doesn't affect others)
+
+**Cons of Sharding:**
+- Complex application logic
+- Cross-shard queries are expensive
+- Rebalancing is difficult (moving data between shards)
+- Hot shards (uneven distribution of data)
+
+**3. Write-Through Caching**
+
+Reduce database writes using caching layers to deduplicate and batch writes:
+
+```python
+import redis
+
+class WriteCache:
+    def __init__(self):
+        self.cache = redis.Redis()
+        self.batch_size = 100
+        self.batch = []
+    
+    def write(self, key, value):
+        # Write to cache immediately
+        self.cache.set(key, value)
+        
+        # Batch writes to database
+        self.batch.append((key, value))
+        if len(self.batch) >= self.batch_size:
+            self.flush_to_db()
+    
+    def flush_to_db(self):
+        # Batch insert to database (much faster)
+        db.bulk_insert(self.batch)
+        self.batch = []
+```
+
+**4. Event Sourcing**
+
+Instead of updating records, append writes to an immutable log:
+
+```
+Traditional:  UPDATE users SET balance=150 WHERE id=1
+              (Overwrites previous state)
+
+Event Sourcing:
+  Event Log:
+  1. UserCreated(id=1, balance=100)
+  2. DepositMade(id=1, amount=50)
+  3. WithdrawalMade(id=1, amount=0)
+  
+  Current State = Replay all events
+```
+
+**Benefits:**
+- Faster writes (append-only log)
+- Full history/audit trail
+- Can replay state to any point in time
+
+**5. CQRS (Command Query Responsibility Segregation)**
+
+Separate read and write models:
+
+```
+Writes go to Write DB (optimized for writes)
+Reads come from Read DB (optimized for reads, eventually consistent)
+
+Application
+    │
+    ├─ Write Request ──→ Write DB (Normalized, optimized for writes)
+    │                        ↓ (Async sync via message queue)
+    │                   Read DB (Denormalized, optimized for reads)
+    │
+    └─ Read Request ───→ Read DB
+```
+
+**Comparison of Write Scaling Techniques:**
+
+| Technique | Complexity | Latency | Consistency | Scalability |
+|-----------|-----------|---------|-------------|------------|
+| Vertical Scaling | Low | Low | Strong | Limited |
+| Sharding | High | Low | Strong | Excellent |
+| Caching | Medium | Low | Eventual | Good |
+| Event Sourcing | High | Low | Eventual | Excellent |
+| CQRS | High | High | Eventual | Excellent |
+
+**Best Practices for Write Scaling:**
+
+1. **Start simple**: Optimize queries, add indexes, vertical scale first
+2. **Use caching**: Reduce writes with Redis/Memcached
+3. **Batch writes**: Insert many rows at once, not one by one
+4. **Choose shard key wisely**: Avoid hot shards (uneven distribution)
+5. **Monitor writes**: Track query performance and replication lag
+6. **Plan for rebalancing**: Have a strategy for adding/removing shards
+
+**Warning Signs You Need Write Scaling:**
+- Primary database CPU/disk usage consistently > 80%
+- Write queries taking > 100ms
+- Application experiencing timeout errors during peak traffic
+- Replication lag constantly increasing
 
 ---
 

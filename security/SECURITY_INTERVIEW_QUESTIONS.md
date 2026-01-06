@@ -1239,6 +1239,244 @@ SELECT * FROM users WHERE username = 'admin' OR '1'='1' AND password = ''
 
 ---
 
+### 9. What metrics should you monitor for a REST API?
+
+**Answer:**
+
+Monitoring REST APIs requires a mix of infrastructure, service, and business metrics. Key metrics to track:
+
+- **Availability / Uptime:** Percent of successful health checks and successful responses (use for SLOs).
+- **Request Rate (RPS / TPS):** Requests per second; detect traffic spikes or drops.
+- **Latency (P50 / P95 / P99):** End-to-end response times; track percentiles rather than averages.
+- **Error Rate (4xx / 5xx):** Ratio or count of client/server errors; alert on spikes in 5xx or unusual 4xx patterns.
+- **Success Rate:** Complement of error rate; useful for SLOs (e.g., 99.9% success).
+- **Throughput (bytes/sec):** Bandwidth for requests/responses; useful for capacity planning.
+- **Timeouts & Retries:** Count and rate of timeouts and retries — indicates downstream slowness.
+- **Concurrent Requests / Concurrency:** In-flight requests per instance; signals saturation.
+- **Queue Length / Backlog:** Pending requests or worker queue size (for async workers).
+- **Resource Utilization:** CPU, memory, disk, file descriptors per host/container.
+- **GC / Runtime Metrics:** GC pause times, thread pool usage (JVM/.NET/node specifics) that affect latency.
+- **DB & Cache Metrics:** DB query latency, connection count, slow queries, cache hit/miss rates.
+- **Downstream Dependency Metrics:** Latency/error rate of services the API calls (third-parties, DB, auth).
+- **Replication / Sync Lag:** For read replicas; important if API serves stale reads.
+- **Rate Limit / Throttle Metrics:** Counts of throttled or rejected requests.
+- **Authentication / Authorization Failures:** Spike could indicate misconfig or attacks.
+- **Tracing Coverage & Span Latency:** % of requests traced and per-span durations for distributed tracing.
+- **Business KPIs:** Relevant business events (signups, purchases) to correlate with infra issues.
+
+**Practical guidance & alerts:**
+
+- Alert on P95/P99 latency breaches rather than mean latency.
+- Alert on sustained high error rate (e.g., 5xx > 0.5% for 5 minutes) and on sudden RPS drops.
+- Correlate increased latency with CPU, GC pauses, or downstream errors before scaling up.
+- Use synthetic checks (health probes) plus real-user metrics (RUM) for coverage.
+
+---
+
+### 10. What are REST API versioning patterns?
+
+**Answer:**
+
+REST API versioning allows you to make breaking changes while maintaining backward compatibility for existing clients. There are several common patterns:
+
+**1. URL Path Versioning (Most Common)**
+
+```
+GET /api/v1/users
+GET /api/v2/users
+GET /api/v3/orders
+```
+
+**Pros:**
+- Clear and visible in URLs
+- Excellent for HTTP caching (separate cache entries per version)
+- Easy to debug and test in browser
+- Each version can have different backend implementations
+
+**Cons:**
+- Verbose URLs
+- Requires separate endpoint definitions
+- More code duplication
+
+**Best for:** Public APIs, when breaking changes are frequent
+
+**2. Query Parameter Versioning**
+
+```
+GET /api/users?version=1
+GET /api/users?v=2
+GET /api/orders?api-version=3
+```
+
+**Pros:**
+- Single URL for all versions (cleaner URLs)
+- Easy to implement on client side
+
+**Cons:**
+- Easy to forget or miss in client code
+- Cache treats each query parameter as separate URL
+- Not SEO-friendly
+- Less visible in documentation
+
+**Best for:** Internal APIs, backward-compatible changes
+
+**3. Header Versioning (Accept Header)**
+
+```
+GET /api/users
+Accept: application/vnd.company.v1+json
+
+OR (Custom Header)
+
+GET /api/users
+X-API-Version: 2
+```
+
+**Pros:**
+- Clean URLs (RESTful)
+- Semantic meaning using vendor prefixes (`vnd.company.v1`)
+- Single endpoint for all versions
+
+**Cons:**
+- Not visible in URL (harder to debug)
+- Hard to test in browser
+- Caching complications (headers not always considered)
+- Less discoverable for API consumers
+
+**Best for:** Enterprise/internal APIs, REST purists
+
+**4. Subdomain Versioning**
+
+```
+GET https://v1.api.example.com/users
+GET https://v2.api.example.com/users
+GET https://api-v3.example.com/users
+```
+
+**Pros:**
+- Clear separation per version
+- Can deploy versions independently
+- Good for load balancing per version
+
+**Cons:**
+- Requires DNS/infrastructure setup
+- SSL certificate complexity
+- More operational overhead
+
+**Best for:** Large scale APIs with separate backend deployments
+
+**5. No Explicit Versioning (Additive Only)**
+
+```javascript
+// v1 response
+GET /api/users
+{ id: 1, name: "John", email: "john@example.com" }
+
+// v2 response (add new fields, never remove)
+GET /api/users
+{ id: 1, name: "John", email: "john@example.com", phone: "555-1234", address: "123 Main St" }
+```
+
+**Pros:**
+- Simplest approach
+- No versioning overhead
+- Excellent caching
+- Single endpoint
+
+**Cons:**
+- Only works if always additive (can't remove/rename fields)
+- Can lead to API bloat over time
+- Doesn't work for structural changes
+
+**Best for:** Small internal APIs, strict backward compatibility requirement
+
+---
+
+**Comparison Table:**
+
+| Pattern | URL Clarity | Caching | Browser Testable | Complexity |
+|---------|------------|---------|-----------------|-----------|
+| **URL Path** (`/v1/`) | Excellent | Excellent | Yes | Medium |
+| **Query Param** | Good | Poor | Yes | Low |
+| **Header** | Excellent | Poor | No | Low |
+| **Subdomain** | Good | Excellent | Yes | High |
+| **No Version** | Excellent | Excellent | Yes | Low |
+
+---
+
+**Deprecation & Lifecycle Best Practices:**
+
+```
+Timeline Example:
+- v1 launches → stable for 2 years
+- v2 launches with breaking changes
+- v1 deprecation notice announced (notify users 3+ months ahead)
+  Response header: Deprecation: true, Sunset: Thu, 31 Dec 2025 23:59:59 GMT
+- v1 supported for 6 months alongside v2
+- v1 sunset → only v2 supported (remove from load balancer)
+```
+
+**Example deprecation headers:**
+
+```
+HTTP/1.1 200 OK
+Deprecation: true
+Sunset: Thu, 31 Dec 2025 23:59:59 GMT
+Link: </api/v2/users>; rel="successor-version"
+Content-Type: application/json
+
+{ "id": 1, "name": "John" }
+```
+
+**Backward Compatibility Guidelines:**
+
+1. **Always extend, never remove:** Add new fields, don't delete old ones
+2. **Keep default behavior:** Old clients should work without changes
+3. **Make new fields optional:** Support both old and new request formats
+4. **Gradual rollout:** Use feature flags for major changes
+
+**Example (JavaScript):**
+
+```javascript
+// Client-side version detection
+class APIClient {
+  constructor(version = 'v1') {
+    this.baseURL = `https://api.example.com/${version}`;
+    this.version = version;
+  }
+
+  async getUsers() {
+    return fetch(`${this.baseURL}/users`);
+  }
+
+  // Handle different response formats
+  async getUsersV1() {
+    const response = await fetch(`${this.baseURL}/users`);
+    return response.json(); // Returns { id, name }
+  }
+
+  async getUsersV2() {
+    const response = await fetch(`${this.baseURL}/users`);
+    const data = response.json(); // Returns { id, name, email, phone }
+    return data;
+  }
+}
+
+// Usage
+const clientV1 = new APIClient('v1');
+const clientV2 = new APIClient('v2');
+```
+
+**Recommendation:**
+
+Use **URL path versioning** (`/api/v1/`, `/api/v2/`) for most REST APIs because:
+- Clear and discoverable
+- Excellent HTTP caching
+- Easy to debug and document
+- Standard industry practice
+- Works well with API gateways and load balancers
+
+
 ## Summary
 
 This guide covers essential security interview questions including:
@@ -1248,7 +1486,8 @@ This guide covers essential security interview questions including:
 3. **Web Security**: XSS, CSRF, SQL Injection
 4. **Network Security**: HTTPS, SSL/TLS
 5. **Application Security**: Secure coding practices
-6. **Best Practices**: Security guidelines and standards
+6. **REST API Monitoring & Versioning**: Metrics, patterns, deprecation
+7. **Best Practices**: Security guidelines and standards
 
 Remember to understand both the concepts and practical implementations. Good luck with your security interviews!
 

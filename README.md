@@ -133,6 +133,8 @@ Interview-Questions-And-Answers/
 │   └── README.md             # Comprehensive Q&A guide (32 questions)
 ├── sql/                       # SQL interview questions and answers
 │   └── SQL_INTERVIEW_QUESTIONS.md  # Comprehensive SQL interview Q&A (25 questions)
+├── payments/                  # Payment technology interview questions
+│   └── FISERV_INTERVIEW_QUESTIONS.md  # Fiserv and payment-processing interview Q&A
 └── README.md                  # This file
 ```
 
@@ -163,6 +165,12 @@ The `sql/SQL_INTERVIEW_QUESTIONS.md` file contains comprehensive interview quest
 - Complex joins and subqueries
 - Window functions and analytics
 - Data integrity and constraints
+
+## Fiserv Payment Topics
+
+### Fiserv Payment Interview Questions
+
+The [Fiserv payment interview guide](payments/FISERV_INTERVIEW_QUESTIONS.md) covers payment-processing fundamentals, Fiserv product context, API integrations, reliability, security, and system design scenarios. Product workflows vary, so use current public documentation and the role description for platform-specific preparation.
 
 ## Other Topics
 
